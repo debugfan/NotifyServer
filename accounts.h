@@ -10,6 +10,6 @@ extern char g_password[512];
 extern std::list<std::string> g_receiver_list;
 
 void load_accounts_from_file(const char *filename);
-void save_accounts_from_file(const char *filename);
+void save_accounts_to_file(const char *filename);
 
 #endif // ACCOUNTS_H_INCLUDED

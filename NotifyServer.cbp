@@ -49,6 +49,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="memory_stream.h" />
+		<Unit filename="notify.cpp" />
+		<Unit filename="notify.h" />
+		<Unit filename="reminders.cpp" />
+		<Unit filename="reminders.h" />
 		<Unit filename="send_mail.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -61,6 +65,8 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="time_utils.h" />
+		<Unit filename="wild_time.cpp" />
+		<Unit filename="wild_time.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

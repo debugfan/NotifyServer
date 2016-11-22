@@ -140,7 +140,7 @@ void load_accounts_from_file(const char *filename)
     xmlMemoryDump();
 }
 
-void save_accounts_from_file(const char *filename)
+void save_accounts_to_file(const char *filename)
 {
     int rc;
     xmlTextWriterPtr writer;
