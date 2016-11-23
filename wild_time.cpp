@@ -3,19 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-time_t make_time_from_local(struct tm *value)
-{
-    time_t tt_now;
-    time_t diff;
-    struct tm tm_now_local;
-    struct tm tm_now_gm;
-    tt_now = time(NULL);
-    tm_now_local = *(localtime(&tt_now));
-    tm_now_gm = *(gmtime(&tt_now));
-    diff = mktime(&tm_now_local) - mktime(&tm_now_gm);
-    return mktime(value) - diff;
-}
-
 void set_wild_time(wild_time_t *time, time_t value, unsigned int flags)
 {
     time->time = *(localtime(&value));
@@ -43,6 +30,22 @@ char *skip_blank(const char *p)
     return (char *)p;
 }
 
+int get_closest_valid_value(int val, int v_min, int v_max)
+{
+    if(val <= v_min)
+    {
+        return v_min;
+    }
+    else if(val >= v_max)
+    {
+        return v_max;
+    }
+    else
+    {
+        return val;
+    }
+}
+
 void parse_wild_day_time_string(wild_time_t *time, const char *s)
 {
     char tmp[10];
@@ -53,6 +56,7 @@ void parse_wild_day_time_string(wild_time_t *time, const char *s)
     if(*p == '*')
     {
         time->flags |= WILD_TIME_HOUR_STAR;
+        time->time.tm_hour = 0;
     }
     else
     {
@@ -60,7 +64,7 @@ void parse_wild_day_time_string(wild_time_t *time, const char *s)
         {
             memset(tmp, 0, sizeof(tmp));
             strncpy(tmp, p, e - p);
-            time->time.tm_hour = atoi(tmp);
+            time->time.tm_hour = get_closest_valid_value(atoi(tmp), 0, 23);
         }
         else
         {
@@ -73,6 +77,7 @@ void parse_wild_day_time_string(wild_time_t *time, const char *s)
     if(*p == '*')
     {
         time->flags |= WILD_TIME_MINUTE_STAR;
+        time->time.tm_min = 0;
     }
     else
     {
@@ -80,7 +85,7 @@ void parse_wild_day_time_string(wild_time_t *time, const char *s)
         {
             memset(tmp, 0, sizeof(tmp));
             strncpy(tmp, p, e - p);
-            time->time.tm_min = atoi(tmp);
+            time->time.tm_min = get_closest_valid_value(atoi(tmp), 0, 59);
 
         }
         else
@@ -93,10 +98,11 @@ void parse_wild_day_time_string(wild_time_t *time, const char *s)
     if(*p == '*')
     {
         time->flags |= WILD_TIME_SECOND_STAR;
+        time->time.tm_sec = 0;
     }
     else
     {
-        time->time.tm_sec = atoi(p);
+        time->time.tm_sec = get_closest_valid_value(atoi(p), 0, 59);
     }
 }
 
@@ -112,6 +118,7 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
     if(*p == '*')
     {
         time->flags |= WILD_TIME_YEAR_STAR;
+        time->time.tm_year = 0;
     }
     else
     {
@@ -133,6 +140,7 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
     if(*p == '*')
     {
         time->flags |= WILD_TIME_MONTH_STAR;
+        time->time.tm_mon = 0;
     }
     else
     {
@@ -140,7 +148,7 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
         {
             memset(tmp, 0, sizeof(tmp));
             strncpy(tmp, p, e - p);
-            time->time.tm_mon = atoi(tmp) - 1;
+            time->time.tm_mon = get_closest_valid_value(atoi(tmp) - 1, 0, 11);
         }
     }
     p = e+1;
@@ -149,6 +157,7 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
     if(*p == '*')
     {
         time->flags |= WILD_TIME_DAY_STAR;
+        time->time.tm_mday = 1;
     }
     else
     {
@@ -156,7 +165,7 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
         {
             memset(tmp, 0, sizeof(tmp));
             strncpy(tmp, p, e - p);
-            time->time.tm_mday = atoi(tmp);
+            time->time.tm_mday = get_closest_valid_value(atoi(tmp), 0, 31);
         }
     }
     p = e+1;
@@ -164,156 +173,210 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
     parse_wild_day_time_string(time, p);
 }
 
-void wild_time_get_recent_time(struct tm *recent, wild_time_t *wild_time, time_t start)
+void tm_get_recent_time(struct tm *recent, struct tm *tm_adj, unsigned int tm_flags, time_t start)
 {
-    struct tm tm_start;
-    struct tm *tm_adj;
+    *recent = *(localtime(&start));
 
-    tm_start = *(localtime(&start));
-    tm_adj = &wild_time->time;
-
-    if(!(wild_time->flags & WILD_TIME_SECOND_STAR))
+    if(!(tm_flags & WILD_TIME_SECOND_STAR))
     {
         recent->tm_sec = tm_adj->tm_sec;
     }
 
-    if(!(wild_time->flags & WILD_TIME_MINUTE_STAR))
+    if(!(tm_flags & WILD_TIME_MINUTE_STAR))
     {
         recent->tm_min = tm_adj->tm_min;
     }
 
-    if(!(wild_time->flags & WILD_TIME_HOUR_STAR))
+    if(!(tm_flags & WILD_TIME_HOUR_STAR))
     {
         recent->tm_hour = tm_adj->tm_hour;
     }
 
-    if(!(wild_time->flags & WILD_TIME_DAY_STAR))
+    if(!(tm_flags & WILD_TIME_DAY_STAR))
     {
-        recent->tm_hour = tm_adj->tm_mday;
+        recent->tm_mday = tm_adj->tm_mday;
     }
 
-    if(!(wild_time->flags & WILD_TIME_MONTH_STAR))
+    if(!(tm_flags & WILD_TIME_MONTH_STAR))
     {
         recent->tm_mon = tm_adj->tm_mon;
     }
 
-    if(!(wild_time->flags & WILD_TIME_YEAR_STAR))
+    if(!(tm_flags & WILD_TIME_YEAR_STAR))
     {
         recent->tm_year = tm_adj->tm_year;
+    }
+}
+
+bool tm_day_is_valid(struct tm *time, int delta)
+{
+    struct tm tm_tmp;
+    time_t tt_new;
+    struct tm tm_new;
+
+    if((time->tm_mon != 1
+       && time->tm_mday + delta <= 30)
+       || (time->tm_mday == 1
+           && time->tm_mday + delta <= 28))
+    {
+        return true;
+    }
+
+    tm_tmp = *time;
+    tm_tmp.tm_mday += delta;
+    tt_new = mktime(&tm_tmp);
+    tm_new = *(localtime(&tt_new));
+    if(tm_new.tm_mday == time->tm_mday + delta)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool tm_get_next_time(struct tm *next, struct tm *start, unsigned int time_flags)
+{
+    *next = *start;
+    do
+    {
+        if(time_flags & WILD_TIME_SECOND_STAR)
+        {
+            if(next->tm_sec < 59)
+            {
+                next->tm_sec++;
+                break;
+            }
+            else
+            {
+                next->tm_sec = 0;
+            }
+        }
+
+        if(time_flags & WILD_TIME_MINUTE_STAR)
+        {
+            if(next->tm_min < 59)
+            {
+                next->tm_min++;
+                break;
+            }
+            else
+            {
+                next->tm_min = 0;
+            }
+        }
+
+        if(time_flags & WILD_TIME_HOUR_STAR)
+        {
+            if(next->tm_hour < 23)
+            {
+                next->tm_hour++;
+            }
+            else
+            {
+                next->tm_hour = 0;
+            }
+        }
+
+        if(time_flags & WILD_TIME_DAY_STAR)
+        {
+            if(next->tm_mday < 28)
+            {
+                next->tm_mday++;
+                break;
+            }
+            else if(next->tm_mday >= 31)
+            {
+                next->tm_mday = 1;
+            }
+            else
+            {
+                if(tm_day_is_valid(next, 1))
+                {
+                    next->tm_mday++;
+                    break;
+                }
+                else
+                {
+                    next->tm_mday = 1;
+                }
+            }
+        }
+
+        if(time_flags & WILD_TIME_MONTH_STAR)
+        {
+            bool done = false;
+            for(int i = 0; i < 2; i++)
+            {
+                if(next->tm_mon < 11)
+                {
+                    next->tm_mon++;
+                    if(tm_day_is_valid(next, 0))
+                    {
+                        done = true;
+                        break;
+                    }
+                }
+                else
+                {
+                    next->tm_mon = 0;
+                    break;
+                }
+            }
+            if(done)
+            {
+                break;
+            }
+        }
+
+        if(time_flags & WILD_TIME_YEAR_STAR)
+        {
+            next->tm_year++;
+            if(!tm_day_is_valid(next, 0))
+            {
+                next->tm_year++;
+            }
+            break;
+        }
+
+        *next = *start;
+        return false;
+    }
+    while(false);
+    return true;
+}
+
+time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t start)
+{
+    struct tm tm_recent;
+    struct tm tm_next;
+
+    tm_get_recent_time(&tm_recent, &wild_time->time, wild_time->flags, start);
+
+    if(tm_day_is_valid(&tm_recent, 0))
+    {
+        return mktime(&tm_recent);
+    }
+    else
+    {
+        tm_get_next_time(&tm_next, &tm_recent, wild_time->flags);
+        return mktime(&tm_next);
     }
 }
 
 time_t wild_time_get_next_time(wild_time_t *wild_time, time_t start)
 {
     time_t next;
-    struct tm tm_start;
+    struct tm tm_recent;
     struct tm tm_next;
-    struct tm *tm_adj;
-    unsigned int period_flag = 0;
 
-    tm_start = *(localtime(&start));
-    tm_next = *(localtime(&start));
-    tm_adj = &wild_time->time;
-
-    if(!(wild_time->flags & WILD_TIME_SECOND_STAR))
+    tm_get_recent_time(&tm_recent, &wild_time->time, wild_time->flags, start);
+    next = mktime(&tm_recent);
+    if(!tm_day_is_valid(&tm_recent, 0) || next <= start)
     {
-        tm_next.tm_sec = tm_adj->tm_sec;
-    }
-    else
-    {
-        if(period_flag == 0)
-        {
-            period_flag = WILD_TIME_SECOND_STAR;
-        }
-    }
-
-    if(!(wild_time->flags & WILD_TIME_MINUTE_STAR))
-    {
-        tm_next.tm_min = tm_adj->tm_min;
-    }
-    else
-    {
-        if(period_flag == 0)
-        {
-            period_flag = WILD_TIME_MINUTE_STAR;
-        }
-    }
-    if(!(wild_time->flags & WILD_TIME_HOUR_STAR))
-    {
-        tm_next.tm_hour = tm_adj->tm_hour;
-    }
-    else
-    {
-        if(period_flag == 0)
-        {
-            period_flag = WILD_TIME_HOUR_STAR;
-        }
-    }
-    if(!(wild_time->flags & WILD_TIME_DAY_STAR))
-    {
-        tm_next.tm_hour = tm_adj->tm_mday;
-    }
-    else
-    {
-        if(period_flag == 0)
-        {
-            period_flag = WILD_TIME_DAY_STAR;
-        }
-    }
-
-    if(!(wild_time->flags & WILD_TIME_MONTH_STAR))
-    {
-        tm_next.tm_mon = tm_adj->tm_mon;
-    }
-    else
-    {
-        if(period_flag == 0)
-        {
-            period_flag = WILD_TIME_MONTH_STAR;
-        }
-    }
-
-    if(!(wild_time->flags & WILD_TIME_YEAR_STAR))
-    {
-        tm_next.tm_year = tm_adj->tm_year;
-    }
-    else
-    {
-        if(period_flag == 0)
-        {
-            period_flag = WILD_TIME_YEAR_STAR;
-        }
-    }
-
-    next = make_time_from_local(&tm_next);
-    if(next <= start)
-    {
-        switch(period_flag)
-        {
-        case WILD_TIME_YEAR_STAR:
-            tm_next.tm_year++;
-            next = make_time_from_local(&tm_next);
-            break;
-        case WILD_TIME_MONTH_STAR:
-            tm_next.tm_mon++;
-            if(tm_next.tm_mon >= 12)
-            {
-                tm_next.tm_mon = tm_next.tm_mon%12;
-                tm_next.tm_year = tm_next.tm_mon/12;
-            }
-            next = make_time_from_local(&tm_next);
-        case WILD_TIME_DAY_STAR:
-            next += 60*60*24;
-            break;
-        case WILD_TIME_HOUR_STAR:
-            next += 60*60;
-            break;
-        case WILD_TIME_MINUTE_STAR:
-            next += 60;
-        case WILD_TIME_SECOND_STAR:
-            next += 1;
-            break;
-        }
+        tm_get_next_time(&tm_next, &tm_recent, wild_time->flags);
+        next = mktime(&tm_next);
     }
     return next;
 }
@@ -373,7 +436,7 @@ void format_wild_time(wild_time_t *wild_time, char *buf)
     }
     else
     {
-        sprintf(tmp, ":%02d", time->tm_min + 1);
+        sprintf(tmp, ":%02d", time->tm_min);
         strcat(buf, tmp);
     }
 
@@ -383,8 +446,7 @@ void format_wild_time(wild_time_t *wild_time, char *buf)
     }
     else
     {
-        sprintf(tmp, ":%02d", time->tm_min + 1);
+        sprintf(tmp, ":%02d", time->tm_sec);
         strcat(buf, tmp);
     }
 }
-

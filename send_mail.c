@@ -96,8 +96,12 @@ int send_mail(const char *mail_server, int use_ssl, const char *username, const 
      * If you have a CA cert for the server stored someplace else than in the
      * default bundle, then the CURLOPT_CAPATH option might come handy for
      * you. */
+#define SKIP_PEER_VERIFICATION
 #ifdef SKIP_PEER_VERIFICATION
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    if(use_ssl != 0)
+    {
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    }
 #endif
 
     /* If the site you're connecting to uses a different host name that what
@@ -105,7 +109,10 @@ int send_mail(const char *mail_server, int use_ssl, const char *username, const 
      * subjectAltName) fields, libcurl will refuse to connect. You can skip
      * this check, but this will make the connection less secure. */
 #ifdef SKIP_HOSTNAME_VERIFICATION
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    if(use_ssl != 0)
+    {
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    }
 #endif
 
     /* Note that this option isn't strictly required, omitting it will result

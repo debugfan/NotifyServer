@@ -30,7 +30,7 @@ void process_reminder_list_node(xmlNodePtr node)
             {
                 content = xmlNodeGetContent(child);
                 reminder.subject = (const char *)content;
-                printf("sender password: %s\n", xmlNodeGetContent(child));
+                printf("subject: %s\n", xmlNodeGetContent(child));
             }
             else if(0 == strcasecmp((const char *)child->name, "content"))
             {
@@ -113,16 +113,24 @@ void load_reminders_from_file(const char *filename)
 time_t get_next_remind_time(reminder_t *reminder)
 {
     time_t start;
-    time_t now = time(NULL);
-    if(reminder->last == 0 || reminder->last > now)
+    time_t now;
+    now = time(NULL);
+    if(reminder->last == 0)
     {
-        start = now;
+        return wild_time_get_recent_time(&reminder->time, now);
     }
     else
     {
-        start = reminder->last;
+        if(reminder->last > now)
+        {
+            start = now;
+        }
+        else
+        {
+            start = reminder->last;
+        }
+        return wild_time_get_next_time(&reminder->time, start);
     }
-    return wild_time_get_next_time(&reminder->time, start);
 }
 
 void process_reminders()

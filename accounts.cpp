@@ -9,6 +9,7 @@
 using namespace std;
 
 char g_smtp_server[512];
+int g_use_ssl = 1;
 char g_username[512];
 char g_password[512];
 std::list<std::string> g_receiver_list;
@@ -26,6 +27,21 @@ void process_sender_node(xmlNodePtr node)
                 strcpy(g_smtp_server, (const char *)content);
                 printf("sender smtp server: %s\n", content);
             }
+            else if(0 == strcasecmp((const char *)child->name, "use_ssl"))
+            {
+                content = xmlNodeGetContent(child);
+                if(0 == strcmp("true", (const char *)content)
+                   || (0 == strcmp("yes", (const char *)content))
+                       || (0 == strcmp("1", (const char *)content)))
+                {
+                    g_use_ssl = 1;
+                }
+                else
+                {
+                    g_use_ssl = 0;
+                }
+                printf("use ssl: %s\n", g_use_ssl == 0 ? "no" : "yes");
+            }
             else if(0 == strcasecmp((const char *)child->name, "username"))
             {
                 content = xmlNodeGetContent(child);
@@ -34,9 +50,16 @@ void process_sender_node(xmlNodePtr node)
             }
             else if(0 == strcasecmp((const char *)child->name, "password"))
             {
+                int len;
                 content = xmlNodeGetContent(child);
                 strcpy(g_password, (const char *)content);
-                printf("sender password: %s\n", xmlNodeGetContent(child));
+                len = strlen(g_password);
+                printf("sender password: ");
+                for(int i = 0; i < len; i++)
+                {
+                    printf("*");
+                }
+                printf("\n");
             }
             else {
                 content = xmlNodeGetContent(child);
@@ -192,6 +215,15 @@ void save_accounts_to_file(const char *filename)
     /* Write an element named "smtp_server" as child of sender. */
     rc = xmlTextWriterWriteElement(writer, BAD_CAST "smtp_server",
                                    BAD_CAST g_smtp_server);
+    if (rc < 0) {
+        printf
+            ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+        return;
+    }
+
+    /* Write an element named "use ssl" as child of sender. */
+    rc = xmlTextWriterWriteElement(writer, BAD_CAST "use_ssl",
+                                   BAD_CAST (g_use_ssl == 0 ? "no" : "yes"));
     if (rc < 0) {
         printf
             ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
