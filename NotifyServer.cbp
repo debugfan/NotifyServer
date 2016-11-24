@@ -57,16 +57,22 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="send_mail.h" />
+		<Unit filename="string_utils.cpp" />
+		<Unit filename="string_utils.h" />
 		<Unit filename="sys_utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="sys_utils.h" />
+		<Unit filename="text_template.cpp" />
+		<Unit filename="text_template.h" />
 		<Unit filename="time_utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="time_utils.h" />
 		<Unit filename="wild_time.cpp" />
 		<Unit filename="wild_time.h" />
+		<Unit filename="work_state.cpp" />
+		<Unit filename="work_state.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

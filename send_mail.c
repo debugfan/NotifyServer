@@ -47,9 +47,8 @@
 void generate_simple_uid(char *buf, int len)
 {
     static unsigned int number = 0;
-    time_t tt;
-    tt = time(NULL);
-    snprintf(buf, len, "%ld%d", tt, number++);
+    time_t tt = time(NULL);
+    snprintf(buf, len, "%ld.%d", tt, number++);
 }
 
 const char *str_if_null(const char *s, const char *v)

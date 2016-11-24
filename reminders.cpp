@@ -6,10 +6,35 @@
 #include "notify.h"
 #include <windows.h>
 #include "wild_time.h"
+#include "work_state.h"
+#include "string_utils.h"
+#include "text_template.h"
 
 using namespace std;
 
 std::list<reminder_t> g_reminder_list;
+
+string process_content_node(xmlNodePtr node)
+{
+    string r = "";
+    for(xmlNodePtr child = node->children; child != NULL; child = child->next)
+    {
+        xmlChar *content = NULL;
+        if(child->type == XML_ELEMENT_NODE)
+        {
+            if(0 == strcasecmp((const char *)child->name, "p"))
+            {
+                content = xmlNodeGetContent(child);
+                r += string((const char *)content) + "\r\n";
+            }
+        }
+        if(content != NULL)
+        {
+            xmlFree(content);
+        }
+    }
+    return r;
+}
 
 void process_reminder_list_node(xmlNodePtr node)
 {
@@ -30,13 +55,13 @@ void process_reminder_list_node(xmlNodePtr node)
             {
                 content = xmlNodeGetContent(child);
                 reminder.subject = (const char *)content;
-                printf("subject: %s\n", xmlNodeGetContent(child));
+                printf("subject: %s\n", content);
             }
             else if(0 == strcasecmp((const char *)child->name, "content"))
             {
-                content = xmlNodeGetContent(child);
-                reminder.content = (const char *)content;
-                printf("content: %s\n", xmlNodeGetContent(child));
+                string s = process_content_node(child);
+                reminder.content = s;
+                printf("content: %s\n", s.c_str());
             }
             else {
                 content = xmlNodeGetContent(child);
@@ -110,47 +135,59 @@ void load_reminders_from_file(const char *filename)
     xmlMemoryDump();
 }
 
-time_t get_next_remind_time(reminder_t *reminder)
+time_t get_recent_remind_time(reminder_t *reminder, time_t current)
 {
-    time_t start;
-    time_t now;
-    now = time(NULL);
-    if(reminder->last == 0)
-    {
-        return wild_time_get_recent_time(&reminder->time, now);
-    }
-    else
-    {
-        if(reminder->last > now)
-        {
-            start = now;
-        }
-        else
-        {
-            start = reminder->last;
-        }
-        return wild_time_get_next_time(&reminder->time, start);
-    }
+    return wild_time_get_recent_time(&reminder->time, current);
+}
+
+time_t get_next_remind_time(reminder_t *reminder, time_t start)
+{
+    return wild_time_get_next_time(&reminder->time, start);
 }
 
 void process_reminders()
 {
-    time_t wait = 0;
+    int wait = 0;
+    time_t last_check = 0;
+    get_work_state_time("last_check_reminders", &last_check);
     while(true) {
         wait = 60*60;
+        time_t start;
+        time_t now = time(NULL);
         for(std::list<reminder_t>::iterator iter = g_reminder_list.begin();
             iter != g_reminder_list.end();
             iter++)
         {
-            time_t next = get_next_remind_time(&(*iter));
-            time_t now = time(NULL);
-            if(next > iter->last)
+            start = iter->last;
+            if(start == 0)
+            {
+                if(last_check > 0)
+                {
+                    start = last_check;
+                }
+                else
+                {
+                    start = now - 60*60*24*180;
+                }
+            }
+            if(start > now)
+            {
+                start = now;
+            }
+            time_t next = get_next_remind_time(&(*iter), start);
+            if(next > start)
             {
                 if(next <= now)
                 {
-                    wait = 0;
-                    notify(iter->subject.c_str(), iter->content.c_str());
+                    string subject = iter->subject;
+                    string content = iter->content;
+                    std::map<std::string, std::string> dict;
+                    template_dict_set_time(dict, &next);
+                    template_replace(subject, dict);
+                    template_replace(content, dict);
+                    notify(subject.c_str(), content.c_str());
                     iter->last = now;
+                    wait = 0;
                 }
                 else
                 {
@@ -164,6 +201,8 @@ void process_reminders()
         }
         if(wait > 0)
         {
+            set_work_state_time("last_check_reminders", &now);
+            printf("Sleep for (seconds): %d\n", wait);
             Sleep(wait*1000);
         }
     }
@@ -239,11 +278,32 @@ void save_reminders_to_file(const char *filename)
             return;
         }
 
-        rc = xmlTextWriterWriteElement(writer, BAD_CAST "content",
-                                       BAD_CAST iter->content.c_str());
+        rc = xmlTextWriterStartElement(writer, BAD_CAST "content");
         if (rc < 0) {
             printf
                 ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+            return;
+        }
+
+        std::vector<std::string> string_list;
+        split_string(string_list, iter->content, "\n");
+        for(std::vector<std::string>::iterator s_iter = string_list.begin();
+            s_iter != string_list.end();
+            s_iter++)
+        {
+            rc = xmlTextWriterWriteElement(writer, BAD_CAST "p",
+                                           BAD_CAST s_iter->c_str());
+            if (rc < 0) {
+                printf
+                    ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+                return;
+            }
+        }
+
+        rc = xmlTextWriterEndElement(writer);
+        if (rc < 0) {
+            printf
+                ("testXmlwriterFilename: Error at xmlTextWriterEndElement\n");
             return;
         }
 

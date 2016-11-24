@@ -18,7 +18,7 @@ typedef struct {
 
 void set_wild_time(wild_time_t *time, time_t value, unsigned int flags);
 void parse_wild_time_string(wild_time_t *time, const char *s);
-time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t start);
+time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t current);
 time_t wild_time_get_next_time(wild_time_t *time, time_t start);
 void format_wild_time(wild_time_t *wild_time, char *buf);
 

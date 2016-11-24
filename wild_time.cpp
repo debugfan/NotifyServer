@@ -347,12 +347,12 @@ bool tm_get_next_time(struct tm *next, struct tm *start, unsigned int time_flags
     return true;
 }
 
-time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t start)
+time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t current)
 {
     struct tm tm_recent;
     struct tm tm_next;
 
-    tm_get_recent_time(&tm_recent, &wild_time->time, wild_time->flags, start);
+    tm_get_recent_time(&tm_recent, &wild_time->time, wild_time->flags, current);
 
     if(tm_day_is_valid(&tm_recent, 0))
     {

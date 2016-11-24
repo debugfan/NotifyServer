@@ -7,6 +7,7 @@
 #include "reminders.h"
 #include <getopt.h>
 #include <windows.h>
+#include "work_state.h"
 
 using namespace std;
 
@@ -140,6 +141,7 @@ int main(int argc, char *argv[])
     options_t opts;
 	memset(&opts, 0, sizeof(opts));
 	parse_options(argc, argv, &opts);
+	set_work_state_file(".\\NotifyServer.ini", "work_state");
 	if(opts.daemon != false)
     {
         char cl[MAX_PATH];
@@ -186,7 +188,9 @@ int main(int argc, char *argv[])
         reminder_t reminder;
         set_wild_time(&reminder.time, next, 0);
         reminder.subject = "test";
-        reminder.content = "test";
+        reminder.content = "test line 1\n"
+            "test line 2\n"
+            "test line 3\n";
         g_reminder_list.push_back(reminder);
         save_reminders_to_file("reminders.xml");
     }
