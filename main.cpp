@@ -8,6 +8,8 @@
 #include <getopt.h>
 #include <windows.h>
 #include "work_state.h"
+#include <vector>
+#include "weather.h"
 
 using namespace std;
 
@@ -136,6 +138,16 @@ int win_daemon(char *command_line)
     exit(0);
 }
 
+typedef struct {
+    time_t delay;
+    time_t (*task_func) (time_t );
+} task_item_t;
+
+task_item_t g_task_list[] = {
+    {0, process_reminders},
+    {0, process_weather_warning_list}
+};
+
 int main(int argc, char *argv[])
 {
     options_t opts;
@@ -195,7 +207,53 @@ int main(int argc, char *argv[])
         save_reminders_to_file("reminders.xml");
     }
 
-    process_reminders();
+    if(file_exists("weather.xml")) {
+        load_weather_config_from_file("weather.xml");
+    }
+    else
+    {
+        save_weather_config_to_file("weather.xml");
+    }
+
+    time_t last = time(NULL);
+    while(true)
+    {
+        int min_delay = 60*60;
+        time_t current = time(NULL);
+        int n = sizeof(g_task_list)/sizeof(task_item_t);
+        for(int i = 0; i < n; i++)
+        {
+            time_t diff = current - last;
+            if(g_task_list[i].delay >= diff)
+            {
+                g_task_list[i].delay -= diff;
+            }
+            else
+            {
+                g_task_list[i].delay = 0;
+            }
+
+            if(g_task_list[i].delay == 0)
+            {
+                time_t now = time(NULL);
+                time_t next = process_reminders(now);
+                g_task_list[i].delay = next - now;
+            }
+
+            if(g_task_list[i].delay < min_delay)
+            {
+                min_delay = g_task_list[i].delay;
+            }
+        }
+
+        last = current;
+
+        if(min_delay > 0)
+        {
+            printf("Sleep for (seconds): %d\n", min_delay);
+            Sleep(min_delay*1000);
+        }
+    }
 
     return 0;
 }

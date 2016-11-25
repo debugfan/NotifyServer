@@ -69,6 +69,8 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="time_utils.h" />
+		<Unit filename="weather.cpp" />
+		<Unit filename="weather.h" />
 		<Unit filename="wild_time.cpp" />
 		<Unit filename="wild_time.h" />
 		<Unit filename="work_state.cpp" />

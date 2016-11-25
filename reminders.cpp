@@ -145,69 +145,6 @@ time_t get_next_remind_time(reminder_t *reminder, time_t start)
     return wild_time_get_next_time(&reminder->time, start);
 }
 
-void process_reminders()
-{
-    int wait = 0;
-    time_t last_check = 0;
-    get_work_state_time("last_check_reminders", &last_check);
-    while(true) {
-        wait = 60*60;
-        time_t start;
-        time_t now = time(NULL);
-        for(std::list<reminder_t>::iterator iter = g_reminder_list.begin();
-            iter != g_reminder_list.end();
-            iter++)
-        {
-            start = iter->last;
-            if(start == 0)
-            {
-                if(last_check > 0)
-                {
-                    start = last_check;
-                }
-                else
-                {
-                    start = now - 60*60*24*180;
-                }
-            }
-            if(start > now)
-            {
-                start = now;
-            }
-            time_t next = get_next_remind_time(&(*iter), start);
-            if(next > start)
-            {
-                if(next <= now)
-                {
-                    string subject = iter->subject;
-                    string content = iter->content;
-                    std::map<std::string, std::string> dict;
-                    template_dict_set_time(dict, &next);
-                    template_replace(subject, dict);
-                    template_replace(content, dict);
-                    notify(subject.c_str(), content.c_str());
-                    iter->last = now;
-                    wait = 0;
-                }
-                else
-                {
-                    time_t tmp = difftime(next, now);
-                    if(wait > tmp)
-                    {
-                        wait = tmp;
-                    }
-                }
-            }
-        }
-        if(wait > 0)
-        {
-            set_work_state_time("last_check_reminders", &now);
-            printf("Sleep for (seconds): %d\n", wait);
-            Sleep(wait*1000);
-        }
-    }
-}
-
 void save_reminders_to_file(const char *filename)
 {
     int rc;
@@ -327,4 +264,82 @@ void save_reminders_to_file(const char *filename)
     }
 
     xmlFreeTextWriter(writer);
+}
+
+time_t process_reminder_item(reminder_t *reminder,
+                             time_t last_check,
+                             time_t current_time)
+{
+    time_t start;
+
+    start = reminder->last;
+    if(start == 0)
+    {
+        if(last_check > 0)
+        {
+            start = last_check;
+        }
+        else
+        {
+            start = current_time - 60*60*24*180;
+        }
+    }
+
+    if(start > current_time)
+    {
+        start = current_time;
+    }
+
+    time_t next = get_next_remind_time(reminder, start);
+    if(next > start)
+    {
+        if(next <= current_time)
+        {
+            string subject = reminder->subject;
+            string content = reminder->content;
+            std::map<std::string, std::string> dict;
+            template_dict_set_time(dict, &next);
+            template_replace(subject, dict);
+            template_replace(content, dict);
+            notify(subject.c_str(), content.c_str());
+            reminder->last = current_time;
+
+            return get_next_remind_time(reminder,
+                                        current_time);
+        }
+        else
+        {
+            return next;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+time_t process_reminders(time_t check_time)
+{
+    time_t last_check;
+    time_t next = check_time + 60*60;
+    get_work_state_time("last_check_reminders",
+                        &last_check);
+    for(std::list<reminder_t>::iterator iter = g_reminder_list.begin();
+        iter != g_reminder_list.end();
+        iter++)
+    {
+        time_t tmp_next = process_reminder_item(&(*iter),
+                                                last_check,
+                                                check_time);
+        if(tmp_next != 0 && tmp_next >= check_time)
+        {
+            if(next > tmp_next)
+            {
+                next = tmp_next;
+            }
+        }
+    }
+    set_work_state_time("last_check_reminders",
+                    &last_check);
+    return next;
 }
