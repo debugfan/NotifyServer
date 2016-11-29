@@ -7,7 +7,7 @@
 #include "wild_time.h"
 
 typedef struct {
-    wild_time_t time;
+    std::list<wild_time_t> time_list;
     time_t last;
     std::string subject;
     std::string content;

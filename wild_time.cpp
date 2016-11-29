@@ -173,7 +173,7 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
     parse_wild_day_time_string(time, p);
 }
 
-void tm_get_recent_time(struct tm *recent, struct tm *tm_adj, unsigned int tm_flags, time_t start)
+void tm_get_recent_time(struct tm *recent, const struct tm *tm_adj, unsigned int tm_flags, time_t start)
 {
     *recent = *(localtime(&start));
 
@@ -365,7 +365,7 @@ time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t current)
     }
 }
 
-time_t wild_time_get_next_time(wild_time_t *wild_time, time_t start)
+time_t wild_time_get_next_time(const wild_time_t *wild_time, time_t start)
 {
     time_t next;
     struct tm tm_recent;
@@ -381,11 +381,29 @@ time_t wild_time_get_next_time(wild_time_t *wild_time, time_t start)
     return next;
 }
 
-void format_wild_time(wild_time_t *wild_time, char *buf)
+time_t wild_time_list_get_next_time(const std::list<wild_time_t> &time_list,
+                                    time_t start)
+{
+    time_t next = MAX_TIME;
+    std::list<wild_time_t>::const_iterator iter;
+    for(iter = time_list.begin();
+        iter != time_list.end();
+        iter++)
+    {
+        time_t tmp_next = wild_time_get_next_time(&(*iter), start);
+        if(tmp_next < next)
+        {
+            next = tmp_next;
+        }
+    }
+    return next;
+}
+
+void format_wild_time(const wild_time_t *wild_time, char *buf)
 {
     char tmp[10];
 
-    struct tm *time = &wild_time->time;
+    const struct tm *time = &wild_time->time;
     unsigned int star_flags = wild_time->flags;
 
     if(star_flags & WILD_TIME_YEAR_STAR)

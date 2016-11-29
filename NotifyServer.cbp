@@ -20,6 +20,7 @@
 					<Add option="-llzma" />
 					<Add option="-liconv" />
 					<Add option="-lws2_32" />
+					<Add option="-ljansson" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -44,6 +45,8 @@
 		</Linker>
 		<Unit filename="accounts.cpp" />
 		<Unit filename="accounts.h" />
+		<Unit filename="http_client.cpp" />
+		<Unit filename="http_client.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="memory_stream.c">
 			<Option compilerVar="CC" />

@@ -39,6 +39,8 @@ string process_content_node(xmlNodePtr node)
 void process_reminder_list_node(xmlNodePtr node)
 {
     reminder_t reminder;
+    reminder.last = 0;
+
     for(xmlNodePtr child = node->children; child != NULL; child = child->next)
     {
         if(child->type == XML_ELEMENT_NODE)
@@ -46,9 +48,11 @@ void process_reminder_list_node(xmlNodePtr node)
             xmlChar *content = NULL;
             if(0 == strcasecmp((const char *)child->name, "time"))
             {
+                wild_time_t time;
                 content = xmlNodeGetContent(child);
-                parse_wild_time_string(&reminder.time,
+                parse_wild_time_string(&time,
                                       (const char *)content);
+                reminder.time_list.push_back(time);
                 printf("time: %s\n", content);
             }
             else if(0 == strcasecmp((const char *)child->name, "subject"))
@@ -76,7 +80,6 @@ void process_reminder_list_node(xmlNodePtr node)
             }
         }
     }
-    reminder.last = 0;
     g_reminder_list.push_back(reminder);
 }
 
@@ -135,16 +138,6 @@ void load_reminders_from_file(const char *filename)
     xmlMemoryDump();
 }
 
-time_t get_recent_remind_time(reminder_t *reminder, time_t current)
-{
-    return wild_time_get_recent_time(&reminder->time, current);
-}
-
-time_t get_next_remind_time(reminder_t *reminder, time_t start)
-{
-    return wild_time_get_next_time(&reminder->time, start);
-}
-
 void save_reminders_to_file(const char *filename)
 {
     int rc;
@@ -197,14 +190,20 @@ void save_reminders_to_file(const char *filename)
             return;
         }
 
-        char time_buf[256];
-        format_wild_time(&iter->time, time_buf);
-        rc = xmlTextWriterWriteElement(writer, BAD_CAST "time",
-                                       BAD_CAST time_buf);
-        if (rc < 0) {
-            printf
-                ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
-            return;
+        list<wild_time_t>::iterator time_iter;
+        for(time_iter = iter->time_list.begin();
+            time_iter != iter->time_list.end();
+            time_iter++)
+        {
+            char time_buf[256];
+            format_wild_time(&(*time_iter), time_buf);
+            rc = xmlTextWriterWriteElement(writer, BAD_CAST "time",
+                                           BAD_CAST time_buf);
+            if (rc < 0) {
+                printf
+                    ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+                return;
+            }
         }
 
         rc = xmlTextWriterWriteElement(writer, BAD_CAST "subject",
@@ -266,6 +265,17 @@ void save_reminders_to_file(const char *filename)
     xmlFreeTextWriter(writer);
 }
 
+void execute_reminder(reminder_t *reminder, time_t next)
+{
+    string subject = reminder->subject;
+    string content = reminder->content;
+    std::map<std::string, std::string> dict;
+    template_dict_set_time(dict, &next);
+    template_replace(subject, dict);
+    template_replace(content, dict);
+    notify(subject.c_str(), content.c_str());
+}
+
 time_t process_reminder_item(reminder_t *reminder,
                              time_t last_check,
                              time_t current_time)
@@ -290,21 +300,15 @@ time_t process_reminder_item(reminder_t *reminder,
         start = current_time;
     }
 
-    time_t next = get_next_remind_time(reminder, start);
+    time_t next = wild_time_list_get_next_time(reminder->time_list, start);
     if(next > start)
     {
         if(next <= current_time)
         {
-            string subject = reminder->subject;
-            string content = reminder->content;
-            std::map<std::string, std::string> dict;
-            template_dict_set_time(dict, &next);
-            template_replace(subject, dict);
-            template_replace(content, dict);
-            notify(subject.c_str(), content.c_str());
+            execute_reminder(reminder, next);
             reminder->last = current_time;
 
-            return get_next_remind_time(reminder,
+            return wild_time_list_get_next_time(reminder->time_list,
                                         current_time);
         }
         else
@@ -340,6 +344,6 @@ time_t process_reminders(time_t check_time)
         }
     }
     set_work_state_time("last_check_reminders",
-                    &last_check);
+                    &check_time);
     return next;
 }
