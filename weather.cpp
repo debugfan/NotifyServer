@@ -70,6 +70,12 @@ void process_weather_list_node(xmlNodePtr node)
                 forecast.url = (const char *)content;
                 printf("url: %s\n", content);
             }
+            else if(0 == strcasecmp((const char *)child->name, "current_url"))
+            {
+                content = xmlNodeGetContent(child);
+                forecast.cur_url = (const char *)content;
+                printf("current_url: %s\n", content);
+            }
             else if(0 == strcasecmp((const char *)child->name, "time"))
             {
                 wild_time_t wild_time;
@@ -243,6 +249,15 @@ void save_weather_config_to_file(const char *filename)
             return;
         }
 
+        rc = xmlTextWriterWriteElement(writer, BAD_CAST "current_url",
+                                       BAD_CAST iter->cur_url.c_str());
+        if (rc < 0)
+        {
+            printf
+            ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+            return;
+        }
+
         std::list<wild_time_t>::iterator s_iter;
         for(s_iter = iter->check_time_list.begin();
                 s_iter != iter->check_time_list.end();
@@ -329,12 +344,12 @@ int parse_weather_object(weather_t *weather, json_t *entry)
         tmp = json_object_get(main, "temp_max");
         if(tmp != NULL && json_is_real(tmp))
         {
-            weather->temp_min = json_real_value(tmp);
+            weather->temp_max = json_real_value(tmp);
         }
         tmp = json_object_get(main, "pressure");
-        if(tmp != NULL && json_is_real(tmp))
+        if(tmp != NULL && json_is_integer(tmp))
         {
-            weather->pressure = json_real_value(tmp);
+            weather->pressure = json_integer_value(tmp);
         }
     }
 
@@ -395,8 +410,7 @@ int parse_weather_json_list(list<weather_t> &weather_list, json_t *root, time_t 
         dt = json_object_get(data, "dt");
         if(json_is_integer(dt))
         {
-            const char *tmp = json_string_value(dt);
-            v_dt = atoi(tmp);
+            v_dt = json_integer_value(dt);
         }
 
         if(v_dt > current_time + 60*60*24)
@@ -557,6 +571,30 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     const char *text;
     list<weather_t> weather_list;
     weather_t cur_weather;
+<<<<<<< HEAD
+=======
+
+    text = http_request(forecast->cur_url.c_str());
+    if(text != NULL)
+    {
+        root = json_loads(text, 0, &error);
+        free((void *)text);
+    }
+    else
+    {
+        return -1;
+    }
+
+    if(root == NULL)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", error.line,
+                error.text);
+        return -1;
+    }
+
+    parse_weather_object(&cur_weather, root);
+    json_decref(root);
+>>>>>>> origin/master
 
     text = http_request(forecast->cur_url.c_str());
     if(text != NULL)
