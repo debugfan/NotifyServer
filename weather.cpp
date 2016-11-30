@@ -17,6 +17,7 @@ using namespace std;
 
 typedef struct
 {
+    time_t time;
     double temp;
     double temp_min;
     double temp_max;
@@ -33,6 +34,7 @@ typedef struct
     int enable;
     string city;
     string url;
+    string cur_url;
     list<wild_time_t> check_time_list;
     time_t last;
 } weather_forecast_t;
@@ -473,6 +475,79 @@ bool weather_list_has_snow(const list<weather_t> &weather_list)
     return has_snow;
 }
 
+int diff_day(const struct tm *first, const struct tm *second)
+{
+    struct tm tmp_first;
+    struct tm tmp_second;
+    time_t tt_first;
+    time_t tt_second;
+    int diff;
+    tmp_first = *first;
+    tmp_second = *second;
+    tmp_first.tm_hour = 0;
+    tmp_first.tm_min = 0;
+    tmp_first.tm_sec = 0;
+    tmp_second.tm_hour = 0;
+    tmp_second.tm_min = 0;
+    tmp_second.tm_sec = 0;
+    tt_first = mktime(&tmp_first);
+    tt_second = mktime(&tmp_second);
+    diff = tt_first - tt_second;
+    return (diff + 60*60*12)/60*60*24;
+}
+
+string check_weather_list(const list<weather_t> &forecast_list,
+                          const weather_t &current)
+{
+    char buf[512];
+    char day[512];
+    struct tm tm_now;
+    struct tm tm_future;
+    string ret = "";
+    weather_t last = current;
+    list<weather_t>::const_iterator iter;
+    for(iter = forecast_list.begin();
+        iter != forecast_list.end();
+        iter++)
+    {
+        if(0 != strcasecmp(iter->weather.c_str(),
+                           last.weather.c_str()))
+        {
+            tm_now = *(localtime(&current.time));
+            tm_future = *(localtime(&iter->time));
+            int days = diff_day(&tm_future, &tm_now);
+            if(days == 0)
+            {
+                strcpy(day, "today");
+            }
+            else if(days == 1)
+            {
+                strcpy(day, "tomorrow");
+            }
+            else
+            {
+                sprintf(day, "%d/%d",
+                        tm_future.tm_mon + 1,
+                        tm_future.tm_mday);
+            }
+            sprintf(buf,
+                    "It will be %s(%s) in %d:%d %s, "
+                    "temp: %f, humidity: %f, pressure: %f\n",
+                    iter->weather.c_str(),
+                    iter->weather_desc.c_str(),
+                    tm_future.tm_hour,
+                    tm_future.tm_min,
+                    day,
+                    iter->temp,
+                    iter->humidity,
+                    iter->pressure);
+            ret += buf;
+            last = *iter;
+        }
+    }
+    return ret;
+}
+
 int execute_weather_forcast(weather_forecast_t *forecast,
                                      time_t last_check,
                                      time_t current_time)
@@ -481,6 +556,29 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     json_error_t error;
     const char *text;
     list<weather_t> weather_list;
+    weather_t cur_weather;
+
+    text = http_request(forecast->cur_url.c_str());
+    if(text != NULL)
+    {
+        root = json_loads(text, 0, &error);
+        free((void *)text);
+    }
+    else
+    {
+        return -1;
+    }
+
+    if(root == NULL)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", error.line,
+                error.text);
+        return -1;
+    }
+
+    parse_weather_object(&cur_weather, root);
+    json_decref(root);
+
 
     text = http_request(forecast->url.c_str());
     if(text != NULL)
@@ -503,20 +601,11 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     parse_weather_json_list(weather_list, root, current_time);
     json_decref(root);
 
-    string subject = "";
-    string content = "";
-    if(weather_list_has_rain(weather_list))
-    {
-        content = "There will be rain in 24 hours";
-    }
-    else if(weather_list_has_rain(weather_list))
-    {
-        content = "There will be snow in 24 hours";
-    }
+    string content = check_weather_list(weather_list, cur_weather);
 
     if(content.length() > 0)
     {
-        subject = "weather forecast";
+        string subject = "weather forecast";
         notify(subject.c_str(), content.c_str());
     }
 
