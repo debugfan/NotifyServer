@@ -13,6 +13,7 @@
 				<Option compiler="msys2_mingw32_gcc" />
 				<Compiler>
 					<Add option="-g" />
+					<Add option="-DBOOST_LOG_DYN_LINK" />
 				</Compiler>
 				<Linker>
 					<Add option="-lxml2" />
@@ -21,6 +22,11 @@
 					<Add option="-liconv" />
 					<Add option="-lws2_32" />
 					<Add option="-ljansson" />
+					<Add option="-lboost_log-mt" />
+					<Add option="-lboost_log_setup-mt" />
+					<Add option="-lboost_filesystem-mt" />
+					<Add option="-lboost_system-mt" />
+					<Add option="-lboost_thread-mt" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -47,6 +53,8 @@
 		<Unit filename="accounts.h" />
 		<Unit filename="http_client.cpp" />
 		<Unit filename="http_client.h" />
+		<Unit filename="log.cpp" />
+		<Unit filename="log.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="memory_stream.c">
 			<Option compilerVar="CC" />

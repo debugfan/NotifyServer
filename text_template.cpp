@@ -1,11 +1,7 @@
 #include "text_template.h"
 #include "string_utils.h"
 #include <time.h>
-
-const char *DayNames[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
-            "Friday", "Saturday"};
-const char *MonthNames[] = {"January", "February", "March", "April", "May", "June",
-             "July", "Augest", "September", "October", "November", "December"};
+#include "time_utils.h"
 
 void template_replace(std::string &template_text,
                       const std::map<std::string, std::string> &dict)

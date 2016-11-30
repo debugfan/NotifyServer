@@ -10,6 +10,7 @@
 #include "work_state.h"
 #include <vector>
 #include "weather.h"
+#include "log.h"
 
 using namespace std;
 
@@ -153,6 +154,7 @@ int main(int argc, char *argv[])
     options_t opts;
 	memset(&opts, 0, sizeof(opts));
 	parse_options(argc, argv, &opts);
+	init_log();
 	set_work_state_file(".\\NotifyServer.ini", "work_state");
 	if(opts.daemon != false)
     {

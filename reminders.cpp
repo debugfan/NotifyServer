@@ -9,6 +9,7 @@
 #include "work_state.h"
 #include "string_utils.h"
 #include "text_template.h"
+#include "log.h"
 
 using namespace std;
 
@@ -46,7 +47,13 @@ void process_reminder_list_node(xmlNodePtr node)
         if(child->type == XML_ELEMENT_NODE)
         {
             xmlChar *content = NULL;
-            if(0 == strcasecmp((const char *)child->name, "time"))
+            if(0 == strcasecmp((const char *)child->name, "enable"))
+            {
+                content = xmlNodeGetContent(child);
+                reminder.enable = atoi((const char *)content);
+                printf("enable: %s\n", content);
+            }
+            else if(0 == strcasecmp((const char *)child->name, "time"))
             {
                 wild_time_t time;
                 content = xmlNodeGetContent(child);
@@ -142,6 +149,7 @@ void save_reminders_to_file(const char *filename)
 {
     int rc;
     xmlTextWriterPtr writer;
+    char tmp_buf[512];
 
     /* Create a new XmlWriter for filename, with no compression. */
     writer = xmlNewTextWriterFilename(filename, 0);
@@ -190,15 +198,24 @@ void save_reminders_to_file(const char *filename)
             return;
         }
 
+        sprintf(tmp_buf, "%s", iter->enable == 0 ? "0" : "1");
+        rc = xmlTextWriterWriteElement(writer, BAD_CAST "enable",
+                                       BAD_CAST tmp_buf);
+        if (rc < 0)
+        {
+            printf
+            ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+            return;
+        }
+
         list<wild_time_t>::iterator time_iter;
         for(time_iter = iter->time_list.begin();
             time_iter != iter->time_list.end();
             time_iter++)
         {
-            char time_buf[256];
-            format_wild_time(&(*time_iter), time_buf);
+            format_wild_time(&(*time_iter), tmp_buf);
             rc = xmlTextWriterWriteElement(writer, BAD_CAST "time",
-                                           BAD_CAST time_buf);
+                                           BAD_CAST tmp_buf);
             if (rc < 0) {
                 printf
                     ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
@@ -273,6 +290,9 @@ void execute_reminder(reminder_t *reminder, time_t next)
     template_dict_set_time(dict, &next);
     template_replace(subject, dict);
     template_replace(content, dict);
+    log_printf(LOG_LEVEL_INFO,
+           "[Notify] subject: %s.",
+           subject.c_str());
     notify(subject.c_str(), content.c_str());
 }
 
@@ -332,14 +352,17 @@ time_t process_reminders(time_t check_time)
         iter != g_reminder_list.end();
         iter++)
     {
-        time_t tmp_next = process_reminder_item(&(*iter),
-                                                last_check,
-                                                check_time);
-        if(tmp_next != 0 && tmp_next >= check_time)
+        if(iter->enable != 0)
         {
-            if(next > tmp_next)
+            time_t tmp_next = process_reminder_item(&(*iter),
+                                                    last_check,
+                                                    check_time);
+            if(tmp_next != 0 && tmp_next >= check_time)
             {
-                next = tmp_next;
+                if(next > tmp_next)
+                {
+                    next = tmp_next;
+                }
             }
         }
     }

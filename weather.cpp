@@ -9,6 +9,8 @@
 #include <jansson.h>
 #include <float.h>
 #include "notify.h"
+#include "time_utils.h"
+#include "log.h"
 
 #include <list>
 #include <string>
@@ -35,6 +37,7 @@ typedef struct
     string city;
     string url;
     string cur_url;
+    int forecast_time;
     list<wild_time_t> check_time_list;
     time_t last;
 } weather_forecast_t;
@@ -75,6 +78,12 @@ void process_weather_list_node(xmlNodePtr node)
                 content = xmlNodeGetContent(child);
                 forecast.cur_url = (const char *)content;
                 printf("current_url: %s\n", content);
+            }
+            else if(0 == strcasecmp((const char *)child->name, "forecast_time"))
+            {
+                content = xmlNodeGetContent(child);
+                forecast.forecast_time = atoi((const char *)content);
+                printf("forecast_time: %s\n", content);
             }
             else if(0 == strcasecmp((const char *)child->name, "time"))
             {
@@ -258,6 +267,16 @@ void save_weather_config_to_file(const char *filename)
             return;
         }
 
+        sprintf(tmp_buf, "%d", iter->forecast_time);
+        rc = xmlTextWriterWriteElement(writer, BAD_CAST "forecast_time",
+                                       BAD_CAST tmp_buf);
+        if (rc < 0)
+        {
+            printf
+            ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+            return;
+        }
+
         std::list<wild_time_t>::iterator s_iter;
         for(s_iter = iter->check_time_list.begin();
                 s_iter != iter->check_time_list.end();
@@ -308,48 +327,62 @@ void save_weather_config_to_file(const char *filename)
 
 void create_weather_config_file(const char *filename)
 {
-    weather_forecast_t warning;
+    weather_forecast_t forecast;
     time_t next = time(NULL) + 30;
     wild_time_t wild_time;
     set_wild_time(&wild_time, next, 0);
-    warning.check_time_list.push_back(wild_time);
-    warning.city = "abc";
-    warning.enable = 1;
-    warning.url = "http://www.example.com/request.php?a=1&b=2";
-    g_weather_forecast_list.push_back(warning);
+    forecast.check_time_list.push_back(wild_time);
+    forecast.enable = 1;
+    forecast.city = "utopian";
+    forecast.cur_url = "http://www.example.com/request.php?a=1&b=2";
+    forecast.url = "http://www.example.com/request.php?a=1&b=2";
+    g_weather_forecast_list.push_back(forecast);
     save_weather_config_to_file(filename);
 }
 
 int parse_weather_object(weather_t *weather, json_t *entry)
 {
+    json_t *dt = NULL;
     json_t *main = NULL;
     json_t *param = NULL;
     weather->weather = "";
     weather->weather_desc = "";
 
+    dt = json_object_get(entry, "dt");
+    if(json_is_integer(dt))
+    {
+        weather->time = json_integer_value(dt);
+    }
+
     main = json_object_get(entry, "main");
     if(main != NULL && json_is_object(main))
     {
         json_t *tmp;
+
         tmp = json_object_get(main, "temp");
-        if(tmp != NULL && json_is_real(tmp))
+        if(tmp != NULL && json_is_number(tmp))
         {
-            weather->temp =  json_real_value(tmp);
+            weather->temp =  json_number_value(tmp);
         }
         tmp = json_object_get(main, "temp_min");
-        if(tmp != NULL && json_is_real(tmp))
+        if(tmp != NULL && json_is_number(tmp))
         {
-            weather->temp_min = json_real_value(tmp);
+            weather->temp_min = json_number_value(tmp);
         }
         tmp = json_object_get(main, "temp_max");
-        if(tmp != NULL && json_is_real(tmp))
+        if(tmp != NULL && json_is_number(tmp))
         {
-            weather->temp_max = json_real_value(tmp);
+            weather->temp_max = json_number_value(tmp);
+        }
+        tmp = json_object_get(main, "humidity");
+        if(tmp != NULL && json_is_number(tmp))
+        {
+            weather->humidity = json_number_value(tmp);
         }
         tmp = json_object_get(main, "pressure");
-        if(tmp != NULL && json_is_integer(tmp))
+        if(tmp != NULL && json_is_number(tmp))
         {
-            weather->pressure = json_integer_value(tmp);
+            weather->pressure = json_number_value(tmp);
         }
     }
 
@@ -376,12 +409,15 @@ int parse_weather_object(weather_t *weather, json_t *entry)
     return 0;
 }
 
-int parse_weather_json_list(list<weather_t> &weather_list, json_t *root, time_t current_time)
+int parse_weather_json_list(list<weather_t> &weather_list,
+                            json_t *root,
+                            time_t current_time,
+                            int time_span)
 {
     if(!json_is_object(root))
     {
         json_decref(root);
-        return 1;
+        return -1;
     }
 
     json_t *object_list = json_object_get(root, "list");
@@ -390,37 +426,32 @@ int parse_weather_json_list(list<weather_t> &weather_list, json_t *root, time_t 
     {
         fprintf(stderr, "error: root is not an array\n");
         json_decref(root);
-        return 1;
+        return -1;
     }
 
     int n = json_array_size(object_list);
     for(int i = 0; i < n; i++)
     {
-        json_t *data, *dt;
+        json_t *entry;
         weather_t weather;
-        time_t v_dt;
 
-        data = json_array_get(object_list, i);
-        if(!json_is_object(data))
+        entry = json_array_get(object_list, i);
+        if(!json_is_object(entry))
         {
             json_decref(root);
-            return 1;
+            break;
         }
 
-        dt = json_object_get(data, "dt");
-        if(json_is_integer(dt))
-        {
-            v_dt = json_integer_value(dt);
-        }
+        parse_weather_object(&weather, entry);
 
-        if(v_dt > current_time + 60*60*24)
+        if(weather.time > current_time + time_span)
         {
             break;
         }
 
-        parse_weather_object(&weather, data);
         weather_list.push_back(weather);
     }
+
     return 0;
 }
 
@@ -489,7 +520,7 @@ bool weather_list_has_snow(const list<weather_t> &weather_list)
     return has_snow;
 }
 
-int diff_day(const struct tm *first, const struct tm *second)
+int tm_diff_day(const struct tm *first, const struct tm *second)
 {
     struct tm tmp_first;
     struct tm tmp_second;
@@ -507,13 +538,14 @@ int diff_day(const struct tm *first, const struct tm *second)
     tt_first = mktime(&tmp_first);
     tt_second = mktime(&tmp_second);
     diff = tt_first - tt_second;
-    return (diff + 60*60*12)/60*60*24;
+    return (diff + 60*60*12)/(60*60*24);
 }
 
 string check_weather_list(const list<weather_t> &forecast_list,
                           const weather_t &current)
 {
     char buf[512];
+    int diff_days;
     char day[512];
     struct tm tm_now;
     struct tm tm_future;
@@ -529,24 +561,24 @@ string check_weather_list(const list<weather_t> &forecast_list,
         {
             tm_now = *(localtime(&current.time));
             tm_future = *(localtime(&iter->time));
-            int days = diff_day(&tm_future, &tm_now);
-            if(days == 0)
+            diff_days = tm_diff_day(&tm_future, &tm_now);
+            if(diff_days == 0)
             {
                 strcpy(day, "today");
             }
-            else if(days == 1)
+            else if(diff_days == 1)
             {
                 strcpy(day, "tomorrow");
             }
             else
             {
-                sprintf(day, "%d/%d",
-                        tm_future.tm_mon + 1,
-                        tm_future.tm_mday);
+                sprintf(day, "on %d %s",
+                        tm_future.tm_mday,
+                        DayShortNames[tm_future.tm_mon]);
             }
             sprintf(buf,
-                    "It will be %s(%s) in %d:%d %s, "
-                    "temp: %f, humidity: %f, pressure: %f\n",
+                    "It will be %s(%s) at %02d:%02d %s: "
+                    "temperature: %.2f, humidity: %.2f%%, pressure: %.2f.\n",
                     iter->weather.c_str(),
                     iter->weather_desc.c_str(),
                     tm_future.tm_hour,
@@ -571,30 +603,6 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     const char *text;
     list<weather_t> weather_list;
     weather_t cur_weather;
-<<<<<<< HEAD
-=======
-
-    text = http_request(forecast->cur_url.c_str());
-    if(text != NULL)
-    {
-        root = json_loads(text, 0, &error);
-        free((void *)text);
-    }
-    else
-    {
-        return -1;
-    }
-
-    if(root == NULL)
-    {
-        fprintf(stderr, "error: on line %d: %s\n", error.line,
-                error.text);
-        return -1;
-    }
-
-    parse_weather_object(&cur_weather, root);
-    json_decref(root);
->>>>>>> origin/master
 
     text = http_request(forecast->cur_url.c_str());
     if(text != NULL)
@@ -617,6 +625,26 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     parse_weather_object(&cur_weather, root);
     json_decref(root);
 
+    text = http_request(forecast->cur_url.c_str());
+    if(text != NULL)
+    {
+        root = json_loads(text, 0, &error);
+        free((void *)text);
+    }
+    else
+    {
+        return -1;
+    }
+
+    if(root == NULL)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", error.line,
+                error.text);
+        return -1;
+    }
+
+    parse_weather_object(&cur_weather, root);
+    json_decref(root);
 
     text = http_request(forecast->url.c_str());
     if(text != NULL)
@@ -636,15 +664,24 @@ int execute_weather_forcast(weather_forecast_t *forecast,
         return -1;
     }
 
-    parse_weather_json_list(weather_list, root, current_time);
+    int time_span = forecast->forecast_time * 60 *60;
+    parse_weather_json_list(weather_list, root, current_time, time_span);
     json_decref(root);
 
     string content = check_weather_list(weather_list, cur_weather);
 
     if(content.length() > 0)
     {
-        string subject = "weather forecast";
-        notify(subject.c_str(), content.c_str());
+        char subject[256];
+        sprintf(subject,
+                "%s Weather Forecast in Future %d Hours",
+                forecast->city.c_str(),
+                forecast->forecast_time);
+        log_printf(LOG_LEVEL_INFO,
+                   "[Notify] subject: %s.",
+                   subject);
+        notify(subject,
+               content.c_str());
     }
 
     return 0;
@@ -707,14 +744,17 @@ time_t process_weather_forecast(time_t current)
             iter != g_weather_forecast_list.end();
             iter++)
     {
-        time_t tmp_next = process_weather_forecast_item(&(*iter),
-                          last_check,
-                          current);
-        if(tmp_next != 0 && tmp_next >= current)
+        if(iter->enable != 0)
         {
-            if(next > tmp_next)
+            time_t tmp_next = process_weather_forecast_item(&(*iter),
+                              last_check,
+                              current);
+            if(tmp_next != 0 && tmp_next >= current)
             {
-                next = tmp_next;
+                if(next > tmp_next)
+                {
+                    next = tmp_next;
+                }
             }
         }
     }
