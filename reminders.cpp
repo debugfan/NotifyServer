@@ -10,32 +10,11 @@
 #include "string_utils.h"
 #include "text_template.h"
 #include "log.h"
+#include "xml_utils.h"
 
 using namespace std;
 
 std::list<reminder_t> g_reminder_list;
-
-string process_content_node(xmlNodePtr node)
-{
-    string r = "";
-    for(xmlNodePtr child = node->children; child != NULL; child = child->next)
-    {
-        xmlChar *content = NULL;
-        if(child->type == XML_ELEMENT_NODE)
-        {
-            if(0 == strcasecmp((const char *)child->name, "p"))
-            {
-                content = xmlNodeGetContent(child);
-                r += string((const char *)content) + "\r\n";
-            }
-        }
-        if(content != NULL)
-        {
-            xmlFree(content);
-        }
-    }
-    return r;
-}
 
 void process_reminder_list_node(xmlNodePtr node)
 {
@@ -70,7 +49,7 @@ void process_reminder_list_node(xmlNodePtr node)
             }
             else if(0 == strcasecmp((const char *)child->name, "content"))
             {
-                string s = process_content_node(child);
+                string s = parse_content_node(child);
                 reminder.content = s;
                 printf("content: %s\n", s.c_str());
             }
@@ -231,34 +210,7 @@ void save_reminders_to_file(const char *filename)
             return;
         }
 
-        rc = xmlTextWriterStartElement(writer, BAD_CAST "content");
-        if (rc < 0) {
-            printf
-                ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
-            return;
-        }
-
-        std::vector<std::string> string_list;
-        split_string(string_list, iter->content, "\n");
-        for(std::vector<std::string>::iterator s_iter = string_list.begin();
-            s_iter != string_list.end();
-            s_iter++)
-        {
-            rc = xmlTextWriterWriteElement(writer, BAD_CAST "p",
-                                           BAD_CAST s_iter->c_str());
-            if (rc < 0) {
-                printf
-                    ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
-                return;
-            }
-        }
-
-        rc = xmlTextWriterEndElement(writer);
-        if (rc < 0) {
-            printf
-                ("testXmlwriterFilename: Error at xmlTextWriterEndElement\n");
-            return;
-        }
+        write_content_node(writer, "content", iter->content);
 
         rc = xmlTextWriterEndElement(writer);
         if (rc < 0) {

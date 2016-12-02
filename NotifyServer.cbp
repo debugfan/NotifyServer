@@ -86,6 +86,8 @@
 		<Unit filename="wild_time.h" />
 		<Unit filename="work_state.cpp" />
 		<Unit filename="work_state.h" />
+		<Unit filename="xml_utils.cpp" />
+		<Unit filename="xml_utils.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

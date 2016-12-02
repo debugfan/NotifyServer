@@ -11,6 +11,7 @@
 #include "notify.h"
 #include "time_utils.h"
 #include "log.h"
+#include "xml_utils.h"
 
 #include <list>
 #include <string>
@@ -40,6 +41,8 @@ typedef struct
     int forecast_time;
     list<wild_time_t> check_time_list;
     time_t last;
+    string subject;
+    string content;
 } weather_forecast_t;
 
 list<weather_forecast_t> g_weather_forecast_list;
@@ -93,6 +96,18 @@ void process_weather_list_node(xmlNodePtr node)
                                        (const char *)content);
                 forecast.check_time_list.push_back(wild_time);
                 printf("time: %s\n", content);
+            }
+            else if(0 == strcasecmp((const char *)child->name, "subject"))
+            {
+                content = xmlNodeGetContent(child);
+                forecast.subject = (const char *)content;
+                printf("subject: %s\n", content);
+            }
+            else if(0 == strcasecmp((const char *)child->name, "content"))
+            {
+                string s = parse_content_node(child);
+                forecast.content = s;
+                printf("content: %s\n", s.c_str());
             }
             else
             {
@@ -292,6 +307,16 @@ void save_weather_config_to_file(const char *filename)
                 return;
             }
         }
+
+        rc = xmlTextWriterWriteElement(writer, BAD_CAST "subject",
+                                       BAD_CAST iter->subject.c_str());
+        if (rc < 0) {
+            printf
+                ("testXmlwriterFilename: Error at xmlTextWriterWriteFormatElement\n");
+            return;
+        }
+
+        write_content_node(writer, "content", iter->content);
 
         rc = xmlTextWriterEndElement(writer);
         if (rc < 0)
@@ -668,19 +693,16 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     parse_weather_json_list(weather_list, root, current_time, time_span);
     json_decref(root);
 
-    string content = check_weather_list(weather_list, cur_weather);
+    string warning = check_weather_list(weather_list, cur_weather);
 
-    if(content.length() > 0)
+    if(warning.length() > 0)
     {
-        char subject[256];
-        sprintf(subject,
-                "%s Weather Forecast in Future %d Hours",
-                forecast->city.c_str(),
-                forecast->forecast_time);
+        string content = warning;
+        content += forecast->content;
         log_printf(LOG_LEVEL_INFO,
                    "[Notify] subject: %s.",
-                   subject);
-        notify(subject,
+                   forecast->subject.c_str());
+        notify(forecast->subject.c_str(),
                content.c_str());
     }
 
