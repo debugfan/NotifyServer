@@ -724,7 +724,12 @@ time_t process_weather_forecast_item(weather_forecast_t *forecast,
         }
         else
         {
-            start = current_time - 60*60*8;
+            time_t period = wild_time_list_get_approx_period(forecast->check_time_list);
+            if(period >= 0x7fffffff)
+            {
+                period = 60 * 60 * 24 * 183;
+            }
+            start = current_time - period/2;
         }
     }
 

@@ -25,6 +25,7 @@ time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t current);
 time_t wild_time_get_next_time(const wild_time_t *time, time_t start);
 time_t wild_time_list_get_next_time(const std::list<wild_time_t> &time_list,
                                     time_t start);
+time_t wild_time_list_get_approx_period(const std::list<wild_time_t> &time_list);
 void format_wild_time(const wild_time_t *wild_time, char *buf);
 
 #endif // WILD_TIME_H_INCLUDED

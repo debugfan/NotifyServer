@@ -236,7 +236,7 @@ bool tm_day_is_valid(struct tm *time, int delta)
     }
 }
 
-bool tm_get_next_time(struct tm *next, struct tm *start, unsigned int time_flags)
+bool tm_get_next_time(struct tm *next, const struct tm *start, unsigned int time_flags)
 {
     *next = *start;
     do
@@ -347,6 +347,55 @@ bool tm_get_next_time(struct tm *next, struct tm *start, unsigned int time_flags
     return true;
 }
 
+time_t tm_get_period(const struct tm *start, unsigned int time_flags)
+{
+    time_t period = 0;
+
+    do
+    {
+        if(time_flags & WILD_TIME_SECOND_STAR)
+        {
+            period = 1;
+            break;
+        }
+
+        if(time_flags & WILD_TIME_MINUTE_STAR)
+        {
+            period = 60;
+            break;
+        }
+
+        if(time_flags & WILD_TIME_HOUR_STAR)
+        {
+            period = 60 * 60;
+            break;
+        }
+
+        if(time_flags & WILD_TIME_DAY_STAR)
+        {
+            period = 60 * 60 * 24;
+            break;
+        }
+
+        if(time_flags & WILD_TIME_MONTH_STAR)
+        {
+            period = 60 * 60 * 24 * 31;
+            break;
+        }
+
+        if(time_flags & WILD_TIME_YEAR_STAR)
+        {
+            period = 60 * 60 * 24 * 366;
+            break;
+        }
+
+        period = 0x7fffffff;
+    }
+    while(false);
+
+    return period;
+}
+
 time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t current)
 {
     struct tm tm_recent;
@@ -397,6 +446,23 @@ time_t wild_time_list_get_next_time(const std::list<wild_time_t> &time_list,
         }
     }
     return next;
+}
+
+time_t wild_time_list_get_approx_period(const std::list<wild_time_t> &time_list)
+{
+    time_t period = 0x7fffffff;
+    std::list<wild_time_t>::const_iterator iter;
+    for(iter = time_list.begin();
+        iter != time_list.end();
+        iter++)
+    {
+        time_t tmp = tm_get_period(&iter->time, iter->flags);
+        if(period > tmp)
+        {
+            period = tmp;
+        }
+    }
+    return period;
 }
 
 void format_wild_time(const wild_time_t *wild_time, char *buf)

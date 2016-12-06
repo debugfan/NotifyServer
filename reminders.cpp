@@ -263,7 +263,12 @@ time_t process_reminder_item(reminder_t *reminder,
         }
         else
         {
-            start = current_time - 60*60*24*180;
+            time_t period = wild_time_list_get_approx_period(reminder->time_list);
+            if(period >= 0x7fffffff)
+            {
+                period = 60 * 60 * 24 * 183;
+            }
+            start = current_time - period/2;
         }
     }
 
