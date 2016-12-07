@@ -27,6 +27,7 @@
 					<Add option="-lboost_filesystem-mt" />
 					<Add option="-lboost_system-mt" />
 					<Add option="-lboost_thread-mt" />
+					<Add option="-lintl" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -51,6 +52,24 @@
 		</Linker>
 		<Unit filename="accounts.cpp" />
 		<Unit filename="accounts.h" />
+		<Unit filename="check_feed.cpp" />
+		<Unit filename="check_feed.h" />
+		<Unit filename="feed/atom_parser.cpp" />
+		<Unit filename="feed/exception.cpp" />
+		<Unit filename="feed/feed_config.h" />
+		<Unit filename="feed/feed_utils.cpp" />
+		<Unit filename="feed/feed_utils.h" />
+		<Unit filename="feed/parser.cpp" />
+		<Unit filename="feed/parser_factory.cpp" />
+		<Unit filename="feed/rss_09x_parser.cpp" />
+		<Unit filename="feed/rss_10_parser.cpp" />
+		<Unit filename="feed/rss_parser.cpp" />
+		<Unit filename="feed/rsspp.h" />
+		<Unit filename="feed/rsspp_internal.h" />
+		<Unit filename="feed/strptime.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="feed/strptime.h" />
 		<Unit filename="http_client.cpp" />
 		<Unit filename="http_client.h" />
 		<Unit filename="log.cpp" />

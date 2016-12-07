@@ -52,5 +52,8 @@ obj
 *.depend
 accounts.xml
 reminders.xml
-*.ini
 weather.xml
+feed.xml
+*.ini
+*.log
+
