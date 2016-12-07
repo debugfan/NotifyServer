@@ -78,7 +78,12 @@ static size_t handle_headers(void * ptr, size_t size, size_t nmemb, void * data)
 	return size * nmemb;
 }
 
-feed parser::parse_url(const std::string& url, time_t lastmodified, const std::string& etag, void * api, const std::string& cookie_cache, CURL *ehandle) {
+feed parser::parse_url(const std::string& url,
+                       time_t lastmodified,
+                       const std::string& etag,
+                       void * api,
+                       const std::string& cookie_cache,
+                       CURL *ehandle) {
 	std::string buf;
 	CURLcode ret;
 	curl_slist* custom_headers {};

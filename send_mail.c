@@ -182,6 +182,7 @@ int send_mail(const char *mail_server, int use_ssl, const char *username, const 
         "From: %s\r\n"
         "%s"
         "Message-ID: %s\r\n"
+        "Content-Type: text/html; charset=\"utf-8\"\r\n"
         "Subject: %s\r\n"
         "\r\n", /* empty line to divide headers from body, see RFC5322 */
         mail_time,
