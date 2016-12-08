@@ -603,7 +603,7 @@ string check_weather_list(const list<weather_t> &forecast_list,
             }
             sprintf(buf,
                     "It will be %s(%s) at %02d:%02d %s: "
-                    "temperature: %.2f, humidity: %.2f%%, pressure: %.2f.\n",
+                    "temperature: %.2f, humidity: %.2f%%, pressure: %.2f.<br />",
                     iter->weather.c_str(),
                     iter->weather_desc.c_str(),
                     tm_future.tm_hour,

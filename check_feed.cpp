@@ -13,9 +13,12 @@
 #include "log.h"
 #include "xml_utils.h"
 #include "feed/rsspp.h"
+#include "feed/rsspp_internal.h"
+#include "text_template.h"
 
 #include <list>
 #include <string>
+#include <map>
 
 using namespace std;
 
@@ -296,30 +299,66 @@ void create_feed_config_file(const char *filename)
     set_wild_time(&wild_time, next, 0);
     feed.check_time_list.push_back(wild_time);
     feed.enable = 1;
+    feed.subject = "{{ENTRY_TITLE}}";
+    feed.content = "{{ENTRY_CONTENT}}";
     feed.url = "http://www.eduro.com/feed/";
     g_feed_outline_list.push_back(feed);
     save_feed_config_to_file(filename);
 }
 
-int execute_check_feed(feed_outline_t *feed,
+time_t parse_date(const std::string& datestr) {
+	time_t t = curl_getdate(datestr.c_str(), NULL);
+	if (t == -1) {
+		//LOG(LOG_INFO, "rss_parser::parse_date: encountered t == -1, trying out W3CDTF parser...");
+		t = curl_getdate(rsspp::rss_parser::__w3cdtf_to_rfc822(datestr).c_str(), NULL);
+	}
+	if (t == -1) {
+		//LOG(LOG_INFO, "rss_parser::parse_date: still t == -1, setting to current time");
+		t = ::time(NULL);
+	}
+	return t;
+}
+
+void execute_check_feed(feed_outline_t *feed,
                                      time_t last_check,
                                      time_t current_time)
 {
-    rsspp::parser p(0, "Rsspp");
-
-    rsspp::feed f = p.parse_url(feed->url.c_str(),
-                    feed->last,
-                    "",
-                    NULL,
-                    "",
-                    0);
-
-    for(int i = 0; i < f.items.size(); i++)
+    try
     {
-        string subject = f.items[i].title;
-        string content = f.items[i].description;
+        rsspp::parser p(0, "Rsspp");
 
-        notify(subject.c_str(), content.c_str());
+        rsspp::feed f = p.parse_url(feed->url.c_str(),
+                        last_check,
+                        "",
+                        NULL,
+                        "",
+                        0);
+
+        int n = f.items.size();
+        for(int i = 0; i < n; i++)
+        {
+            time_t timestamps = parse_date(f.items[i].pubDate);
+            if(timestamps > 0 && timestamps < last_check)
+            {
+                break;
+            }
+            std::map<std::string, std::string> dict;
+            string subject = feed->subject;
+            string content = feed->content;
+            template_dict_set_pair(dict,
+                                   "{{ENTRY_TITLE}}",
+                                   f.items[i].title.c_str());
+            template_dict_set_pair(dict,
+                                   "{{ENTRY_CONTENT}}",
+                                   f.items[i].description.c_str());
+            template_replace(subject, dict);
+            template_replace(content, dict);
+            notify(subject.c_str(), content.c_str());
+        }
+    }
+    catch(...)
+    {
+        // to do
     }
 }
 

@@ -182,7 +182,7 @@ int send_mail(const char *mail_server, int use_ssl, const char *username, const 
         "From: %s\r\n"
         "%s"
         "Message-ID: %s\r\n"
-        "Content-Type: text/html; charset=\"utf-8\"\r\n"
+        "Content-Type: text/html; charset=UTF-8\r\n"
         "Subject: %s\r\n"
         "\r\n", /* empty line to divide headers from body, see RFC5322 */
         mail_time,
@@ -194,8 +194,16 @@ int send_mail(const char *mail_server, int use_ssl, const char *username, const 
 
     memory_stream_init(&message_stream);
     memory_stream_write(mail_header, strlen(mail_header), 1, &message_stream);
+    const char *html_prefix = "<html>\r\n"
+                "<head>\r\n"
+                "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\r\n"
+                "</head>\r\n"
+                "<body>\r\n";
+    const char *html_postfix = "</body>\r\n"
+                        "</html>\r\n";
+    memory_stream_write(html_prefix, strlen(html_prefix), 1, &message_stream);
     memory_stream_write(IF_NULL(message, ""), strlen(IF_NULL(message, "")), 1, &message_stream);
-
+    memory_stream_write(html_postfix, strlen(html_postfix), 1, &message_stream);
     memory_stream_rewind(&message_stream);
     curl_easy_setopt(curl, CURLOPT_READFUNCTION, memory_stream_read);
     curl_easy_setopt(curl, CURLOPT_READDATA, &message_stream);

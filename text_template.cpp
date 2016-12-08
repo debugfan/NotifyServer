@@ -31,3 +31,11 @@ void template_dict_set_time(std::map<std::string, std::string> &dict,
     sprintf(buf, "%d", tm_time.tm_sec);
     dict["{{SECOND}}"] = buf;
 }
+
+void template_dict_set_pair(std::map<std::string, std::string> &dict,
+                           const char *key,
+                           const char *value)
+{
+    dict[key] = value;
+}
+

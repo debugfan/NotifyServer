@@ -142,7 +142,7 @@ feed parser::parse_url(const std::string& url,
 		//auto header = strprintf::fmt("If-None-Match: %s", etag);
 		//custom_headers = curl_slist_append(custom_headers, header.c_str());
 		char header[512];
-		sprintf(header, "If-None-Match: %s", etag);
+		sprintf(header, "If-None-Match: %s", etag.c_str());
 		custom_headers = curl_slist_append(custom_headers, header);
 	}
 
