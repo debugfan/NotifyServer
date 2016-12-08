@@ -342,7 +342,7 @@ void execute_check_feed(feed_outline_t *feed,
             {
                 break;
             }
-            std::map<std::string, std::string> dict;
+            dict_t dict;
             string subject = feed->subject;
             string content = feed->content;
             template_dict_set_pair(dict,

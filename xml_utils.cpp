@@ -4,23 +4,34 @@
 #include <string.h>
 #include "string_utils.h"
 
+std::string dump_node_children(xmlNodePtr node)
+{
+    std::string r = "";
+    for(xmlNodePtr child = node->children; child != NULL; child = child->next)
+    {
+        xmlBufferPtr pbuf =	xmlBufferCreate();
+        if(pbuf != NULL)
+        {
+            xmlNodeDump(pbuf, NULL, child, 0, 0);
+            const xmlChar *content = xmlBufferContent(pbuf);
+            r += std::string((const char *)content);
+            xmlBufferFree(pbuf);
+        }
+    }
+    return r;
+}
+
 std::string parse_content_node(xmlNodePtr node)
 {
     std::string r = "";
     for(xmlNodePtr child = node->children; child != NULL; child = child->next)
     {
-        xmlChar *content = NULL;
         if(child->type == XML_ELEMENT_NODE)
         {
             if(0 == strcasecmp((const char *)child->name, "p"))
             {
-                content = xmlNodeGetContent(child);
-                r += std::string((const char *)content) + "\r\n";
+                r += dump_node_children(child) + "\r\n";
             }
-        }
-        if(content != NULL)
-        {
-            xmlFree(content);
         }
     }
     return r;

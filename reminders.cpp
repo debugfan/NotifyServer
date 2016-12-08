@@ -238,7 +238,7 @@ void execute_reminder(reminder_t *reminder, time_t next)
 {
     string subject = reminder->subject;
     string content = reminder->content;
-    std::map<std::string, std::string> dict;
+    dict_t dict;
     template_dict_set_time(dict, &next);
     template_replace(subject, dict);
     template_replace(content, dict);

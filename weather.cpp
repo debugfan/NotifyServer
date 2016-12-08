@@ -12,7 +12,9 @@
 #include "time_utils.h"
 #include "log.h"
 #include "xml_utils.h"
+#include "text_template.h"
 
+#include <map>
 #include <list>
 #include <string>
 
@@ -566,7 +568,7 @@ int tm_diff_day(const struct tm *first, const struct tm *second)
     return (diff + 60*60*12)/(60*60*24);
 }
 
-string check_weather_list(const list<weather_t> &forecast_list,
+std::list<std::map<std::string, dict_value_t>> check_weather_list(const list<weather_t> &forecast_list,
                           const weather_t &current)
 {
     char buf[512];
@@ -574,13 +576,14 @@ string check_weather_list(const list<weather_t> &forecast_list,
     char day[512];
     struct tm tm_now;
     struct tm tm_future;
-    string ret = "";
     weather_t last = current;
+    list<std::map<std::string, dict_value_t>> warning_list;
     list<weather_t>::const_iterator iter;
     for(iter = forecast_list.begin();
         iter != forecast_list.end();
         iter++)
     {
+        std::map<std::string, dict_value_t> warning_entry;
         if(0 != strcasecmp(iter->weather.c_str(),
                            last.weather.c_str()))
         {
@@ -601,22 +604,40 @@ string check_weather_list(const list<weather_t> &forecast_list,
                         tm_future.tm_mday,
                         DayShortNames[tm_future.tm_mon]);
             }
-            sprintf(buf,
-                    "It will be %s(%s) at %02d:%02d %s: "
-                    "temperature: %.2f, humidity: %.2f%%, pressure: %.2f.<br />",
-                    iter->weather.c_str(),
-                    iter->weather_desc.c_str(),
+            template_dict_map_set_pair(warning_entry,
+                                       "DAY",
+                                       day);
+            sprintf(buf, "%02d:%02d:%02d",
                     tm_future.tm_hour,
                     tm_future.tm_min,
-                    day,
-                    iter->temp,
-                    iter->humidity,
-                    iter->pressure);
-            ret += buf;
+                    tm_future.tm_sec);
+            template_dict_map_set_pair(warning_entry,
+                           "DAY_TIME",
+                           buf);
+            sprintf(buf, "%.2f", iter->temp);
+            template_dict_map_set_pair(warning_entry,
+                                       "TEMPERATURE",
+                                       buf);
+            sprintf(buf, "%.2f", iter->humidity);
+            template_dict_map_set_pair(warning_entry,
+                                       "HUMIDITY",
+                                       buf);
+            sprintf(buf, "%.2f", iter->pressure);
+            template_dict_map_set_pair(warning_entry,
+                                       "PRESSURE",
+                                       buf);
+            template_dict_map_set_pair(warning_entry,
+                           "WEATHER",
+                           iter->weather.c_str());
+            template_dict_map_set_pair(warning_entry,
+               "WEATHER_DESCRIPTOR",
+               iter->weather_desc.c_str());
+            warning_list.push_back(warning_entry);
             last = *iter;
         }
     }
-    return ret;
+
+    return warning_list;
 }
 
 int execute_weather_forcast(weather_forecast_t *forecast,
@@ -693,16 +714,23 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     parse_weather_json_list(weather_list, root, current_time, time_span);
     json_decref(root);
 
-    string warning = check_weather_list(weather_list, cur_weather);
+    std::list<std::map<std::string, dict_value_t>> warning_list;
+    warning_list = check_weather_list(weather_list, cur_weather);
 
-    if(warning.length() > 0)
+    if(warning_list.size() > 0)
     {
-        string content = warning;
-        content += forecast->content;
+        string subject = forecast->subject;
+        string content = forecast->content;
+        dict_t dict;
+        template_dict_set_list_pair(dict,
+                                    "WARNING_LIST",
+                                    warning_list);
+        template_replace(subject, dict);
+        template_replace(content, dict);
         log_printf(LOG_LEVEL_INFO,
                    "[Notify] subject: %s.",
-                   forecast->subject.c_str());
-        notify(forecast->subject.c_str(),
+                   subject.c_str());
+        notify(subject.c_str(),
                content.c_str());
     }
 
