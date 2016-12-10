@@ -295,3 +295,12 @@ void save_accounts_to_file(const char *filename)
 
     xmlFreeTextWriter(writer);
 }
+
+void create_accounts_config_file(const char *filename)
+{
+    strcpy(g_smtp_server, "smtp.example.com");
+    strcpy(g_username, "user@example.com");
+    strcpy(g_password, "pass");
+    g_receiver_list.push_back("alice@example.com");
+    save_accounts_to_file("accounts.xml");
+}

@@ -188,11 +188,7 @@ int main(int argc, char *argv[])
         load_accounts_from_file("accounts.xml");
     }
     else {
-        strcpy(g_smtp_server, "smtp.example.com");
-        strcpy(g_username, "user@example.com");
-        strcpy(g_password, "pass");
-        g_receiver_list.push_back("alice@example.com");
-        save_accounts_to_file("accounts.xml");
+        create_accounts_config_file("accounts.xml");
     }
 
     if(file_exists("reminders.xml")) {
@@ -200,17 +196,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        time_t next = time(NULL) + 30;
-        reminder_t reminder;
-        wild_time_t wild_time;
-        set_wild_time(&wild_time, next, 0);
-        reminder.time_list.push_back(wild_time);
-        reminder.subject = "test";
-        reminder.content = "test line 1\n"
-            "test line 2\n"
-            "test line 3\n";
-        g_reminder_list.push_back(reminder);
-        save_reminders_to_file("reminders.xml");
+        create_reminders_config_file("reminders.xml");
     }
 
     if(file_exists("weather.xml")) {

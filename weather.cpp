@@ -360,7 +360,7 @@ void create_weather_config_file(const char *filename)
     set_wild_time(&wild_time, next, 0);
     forecast.check_time_list.push_back(wild_time);
     forecast.enable = 1;
-    forecast.city = "utopian";
+    forecast.city = "Utopian";
     forecast.cur_url = "http://www.example.com/request.php?a=1&b=2";
     forecast.url = "http://www.example.com/request.php?a=1&b=2";
     g_weather_forecast_list.push_back(forecast);

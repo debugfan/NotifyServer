@@ -327,3 +327,19 @@ time_t process_reminders(time_t check_time)
                     &check_time);
     return next;
 }
+
+void create_reminders_config_file(const char *filename)
+{
+    time_t next = time(NULL) + 30;
+    reminder_t reminder;
+    wild_time_t wild_time;
+    set_wild_time(&wild_time, next, 0);
+    reminder.time_list.push_back(wild_time);
+    reminder.subject = "test";
+    reminder.content = "test line 1\n"
+        "test line 2\n"
+        "test line 3\n";
+    g_reminder_list.push_back(reminder);
+    save_reminders_to_file("reminders.xml");
+}
+
