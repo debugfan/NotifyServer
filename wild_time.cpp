@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "string_utils.h"
 
 void set_wild_time(wild_time_t *time, time_t value, unsigned int flags)
 {
@@ -19,15 +20,6 @@ bool is_blank(char c)
     {
         return false;
     }
-}
-
-char *skip_blank(const char *p)
-{
-    while(*p != '\0' && is_blank(*p))
-    {
-        p++;
-    }
-    return (char *)p;
 }
 
 int get_closest_valid_value(int val, int v_min, int v_max)
@@ -272,6 +264,7 @@ bool tm_get_next_time(struct tm *next, const struct tm *start, unsigned int time
             if(next->tm_hour < 23)
             {
                 next->tm_hour++;
+                break;
             }
             else
             {
@@ -440,7 +433,8 @@ time_t wild_time_list_get_next_time(const std::list<wild_time_t> &time_list,
         iter++)
     {
         time_t tmp_next = wild_time_get_next_time(&(*iter), start);
-        if(tmp_next < next)
+        if(tmp_next > start && tmp_next < MAX_TIME
+           && tmp_next < next)
         {
             next = tmp_next;
         }

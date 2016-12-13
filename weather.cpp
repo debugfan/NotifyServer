@@ -772,7 +772,7 @@ time_t process_weather_forecast_item(weather_forecast_t *forecast,
     {
         if(next <= current_time)
         {
-            execute_weather_forcast(forecast, last_check, current_time);
+            execute_weather_forcast(forecast, start, current_time);
             forecast->last = current_time;
 
             return wild_time_list_get_next_time(forecast->check_time_list,

@@ -5,6 +5,8 @@
 #include <string>
 #include <map>
 
+char *skip_blank(const char *s);
+
 void replace_all(std::string& str,
                  const std::string& from,
                  const std::string& to);

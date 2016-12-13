@@ -14,6 +14,14 @@
 
 using namespace std;
 
+typedef struct {
+    int enable;
+    std::list<wild_time_t> time_list;
+    time_t last;
+    std::string subject;
+    std::string content;
+} reminder_t;
+
 std::list<reminder_t> g_reminder_list;
 
 void process_reminder_list_node(xmlNodePtr node)
@@ -234,12 +242,12 @@ void save_reminders_to_file(const char *filename)
     xmlFreeTextWriter(writer);
 }
 
-void execute_reminder(reminder_t *reminder, time_t next)
+void execute_reminder(reminder_t *reminder, time_t when)
 {
     string subject = reminder->subject;
     string content = reminder->content;
     dict_t dict;
-    template_dict_set_time(dict, &next);
+    template_dict_set_time(dict, &when);
     template_replace(subject, dict);
     template_replace(content, dict);
     log_printf(LOG_LEVEL_INFO,

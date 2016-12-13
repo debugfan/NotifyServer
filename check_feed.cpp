@@ -346,10 +346,10 @@ void execute_check_feed(feed_outline_t *feed,
             string subject = feed->subject;
             string content = feed->content;
             template_dict_set_pair(dict,
-                                   "{{ENTRY_TITLE}}",
+                                   "ENTRY_TITLE",
                                    f.items[i].title.c_str());
             template_dict_set_pair(dict,
-                                   "{{ENTRY_CONTENT}}",
+                                   "ENTRY_CONTENT",
                                    f.items[i].description.c_str());
             template_replace(subject, dict);
             template_replace(content, dict);
@@ -397,7 +397,7 @@ time_t process_feed_item(feed_outline_t *feed,
     {
         if(next <= current_time)
         {
-            execute_check_feed(feed, last_check, current_time);
+            execute_check_feed(feed, start, current_time);
             feed->last = current_time;
 
             return wild_time_list_get_next_time(feed->check_time_list,

@@ -33,7 +33,7 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
     return realsize;
 }
 
-const char *http_request(const char *url)
+char *http_request(const char *url)
 {
     CURL *curl_handle;
     CURLcode res;
@@ -41,6 +41,7 @@ const char *http_request(const char *url)
     struct MemoryStruct chunk;
 
     chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
+    chunk.memory[0] = '\0';
     chunk.size = 0;    /* no data at this point */
 
     curl_global_init(CURL_GLOBAL_ALL);

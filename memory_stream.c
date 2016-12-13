@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <stdio.h>
-
-#ifndef MIN
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#endif
+#include "minmax.h"
 
 void memory_stream_init(memory_stream_t *stream)
 {

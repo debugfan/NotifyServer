@@ -37,3 +37,12 @@ void split_string(std::vector<std::string> &string_list,
     }
 }
 
+char *skip_blank(const char *s)
+{
+    while(*s == ' ' || *s == '\t')
+    {
+        s++;
+    }
+    return (char *)s;
+}
+

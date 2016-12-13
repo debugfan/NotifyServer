@@ -12,6 +12,7 @@
 #include "weather.h"
 #include "log.h"
 #include "check_feed.h"
+#include "check_stock.h"
 
 using namespace std;
 
@@ -148,7 +149,8 @@ typedef struct {
 task_item_t g_task_list[] = {
     {0, process_reminders},
     {0, process_weather_forecast},
-    {0, process_feed_list}
+    {0, process_feed_list},
+    {0, process_stock_list}
 };
 
 int main(int argc, char *argv[])
@@ -213,6 +215,14 @@ int main(int argc, char *argv[])
     else
     {
         create_feed_config_file("feed.xml");
+    }
+
+    if(file_exists("stock.xml")) {
+        load_stock_config_from_file("stock.xml");
+    }
+    else
+    {
+        create_stock_config_file("stock.xml");
     }
 
     time_t last = time(NULL);

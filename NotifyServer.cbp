@@ -54,6 +54,8 @@
 		<Unit filename="accounts.h" />
 		<Unit filename="check_feed.cpp" />
 		<Unit filename="check_feed.h" />
+		<Unit filename="check_stock.cpp" />
+		<Unit filename="check_stock.h" />
 		<Unit filename="feed/atom_parser.cpp" />
 		<Unit filename="feed/exception.cpp" />
 		<Unit filename="feed/feed_config.h" />
@@ -79,6 +81,7 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="memory_stream.h" />
+		<Unit filename="minmax.h" />
 		<Unit filename="notify.cpp" />
 		<Unit filename="notify.h" />
 		<Unit filename="reminders.cpp" />
