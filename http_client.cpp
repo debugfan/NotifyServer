@@ -80,7 +80,7 @@ char *http_request(const char *url)
          * Do something nice with it!
          */
 
-        printf("%lu bytes retrieved\n", (long)chunk.size);
+        fprintf(stdout, "%lu bytes retrieved\n", (long)chunk.size);
     }
 
     /* cleanup curl stuff */

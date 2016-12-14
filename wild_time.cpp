@@ -165,38 +165,210 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
     parse_wild_day_time_string(time, p);
 }
 
-void tm_get_recent_time(struct tm *recent, const struct tm *tm_adj, unsigned int tm_flags, time_t start)
+int get_max_mday(int year, int month)
 {
-    *recent = *(localtime(&start));
-
-    if(!(tm_flags & WILD_TIME_SECOND_STAR))
+    int r;
+    switch(month%12)
     {
-        recent->tm_sec = tm_adj->tm_sec;
+    case 0:
+    case 2:
+    case 4:
+    case 6:
+    case 7:
+    case 9:
+    case 11:
+        r = 31;
+        break;
+    case 3:
+    case 5:
+    case 8:
+    case 10:
+        r = 30;
+        break;
+    case 1:
+        r = 28;
+        break;
+    default:
+        r = 28;
+        break;
     }
+    return r;
+}
 
-    if(!(tm_flags & WILD_TIME_MINUTE_STAR))
+void tm_get_recent_time(struct tm *recent,
+                        const struct tm *tm_adj,
+                        unsigned int tm_flags,
+                        time_t start)
+{
+#define GUARANTEE_TYPE_NONE         0
+#define GUARANTEE_TYPE_POSITIVE     1
+#define GUARANTEE_TYPE_NEGATIVE     -1
+    int guarantee = GUARANTEE_TYPE_NONE;
+    struct tm tm_start = *(localtime(&start));
+
+    if(!(tm_flags & WILD_TIME_YEAR_STAR))
     {
-        recent->tm_min = tm_adj->tm_min;
+        recent->tm_year = tm_adj->tm_year;
+        if(guarantee == GUARANTEE_TYPE_NONE)
+        {
+            if(recent->tm_year > tm_start.tm_year)
+            {
+                guarantee = GUARANTEE_TYPE_POSITIVE;
+            }
+            else if(recent->tm_year < tm_start.tm_year)
+            {
+                guarantee = GUARANTEE_TYPE_NEGATIVE;
+            }
+        }
     }
-
-    if(!(tm_flags & WILD_TIME_HOUR_STAR))
+    else
     {
-        recent->tm_hour = tm_adj->tm_hour;
-    }
-
-    if(!(tm_flags & WILD_TIME_DAY_STAR))
-    {
-        recent->tm_mday = tm_adj->tm_mday;
+        recent->tm_year = tm_start.tm_year;
     }
 
     if(!(tm_flags & WILD_TIME_MONTH_STAR))
     {
         recent->tm_mon = tm_adj->tm_mon;
+        if(guarantee == GUARANTEE_TYPE_NONE)
+        {
+            if(recent->tm_mon > tm_start.tm_mon)
+            {
+                guarantee = GUARANTEE_TYPE_POSITIVE;
+            }
+            else if(recent->tm_mon < tm_start.tm_mon)
+            {
+                guarantee = GUARANTEE_TYPE_NEGATIVE;
+            }
+        }
+    }
+    else
+    {
+        if(guarantee == GUARANTEE_TYPE_POSITIVE)
+        {
+            recent->tm_mon = 0;
+        }
+        else if(guarantee == GUARANTEE_TYPE_NEGATIVE)
+        {
+            recent->tm_mon = 11;
+        }
+        else
+        {
+            recent->tm_mon = tm_start.tm_mon;
+        }
     }
 
-    if(!(tm_flags & WILD_TIME_YEAR_STAR))
+    if(!(tm_flags & WILD_TIME_DAY_STAR))
     {
-        recent->tm_year = tm_adj->tm_year;
+        recent->tm_mday = tm_adj->tm_mday;
+        if(guarantee == GUARANTEE_TYPE_NONE)
+        {
+            if(recent->tm_mday > tm_start.tm_mday)
+            {
+                guarantee = GUARANTEE_TYPE_POSITIVE;
+            }
+            else if(recent->tm_mday < tm_start.tm_mday)
+            {
+                guarantee = GUARANTEE_TYPE_NEGATIVE;
+            }
+        }
+    }
+    else
+    {
+        if(guarantee == GUARANTEE_TYPE_POSITIVE)
+        {
+            recent->tm_mday = 1;
+        }
+        else if(guarantee == GUARANTEE_TYPE_NEGATIVE)
+        {
+            recent->tm_mday = get_max_mday(recent->tm_year,
+                                           recent->tm_mon);
+        }
+        else
+        {
+            recent->tm_mday = tm_start.tm_mday;
+        }
+    }
+
+    if(!(tm_flags & WILD_TIME_HOUR_STAR))
+    {
+        recent->tm_hour = tm_adj->tm_hour;
+        if(guarantee == GUARANTEE_TYPE_NONE)
+        {
+            if(recent->tm_hour > tm_start.tm_hour)
+            {
+                guarantee = GUARANTEE_TYPE_POSITIVE;
+            }
+            else if(recent->tm_hour < tm_start.tm_hour)
+            {
+                guarantee = GUARANTEE_TYPE_NEGATIVE;
+            }
+        }
+    }
+    else
+    {
+        if(guarantee == GUARANTEE_TYPE_POSITIVE)
+        {
+            recent->tm_hour = 0;
+        }
+        else if(guarantee == GUARANTEE_TYPE_NEGATIVE)
+        {
+            recent->tm_hour = 23;
+        }
+        else
+        {
+            recent->tm_hour = tm_start.tm_hour;
+        }
+    }
+
+    if(!(tm_flags & WILD_TIME_MINUTE_STAR))
+    {
+        recent->tm_min = tm_adj->tm_min;
+        if(guarantee == GUARANTEE_TYPE_NONE)
+        {
+            if(recent->tm_min > tm_start.tm_min)
+            {
+                guarantee = GUARANTEE_TYPE_POSITIVE;
+            }
+            else if(recent->tm_min < tm_start.tm_min)
+            {
+                guarantee = GUARANTEE_TYPE_NEGATIVE;
+            }
+        }
+    }
+    else
+    {
+        if(guarantee == GUARANTEE_TYPE_POSITIVE)
+        {
+            recent->tm_min = 0;
+        }
+        else if(guarantee == GUARANTEE_TYPE_NEGATIVE)
+        {
+            recent->tm_min = 59;
+        }
+        else
+        {
+            recent->tm_min = tm_start.tm_min;
+        }
+    }
+
+    if(!(tm_flags & WILD_TIME_SECOND_STAR))
+    {
+        recent->tm_sec = tm_adj->tm_sec;
+    }
+    else
+    {
+        if(guarantee == GUARANTEE_TYPE_POSITIVE)
+        {
+            recent->tm_sec = 0;
+        }
+        else if(guarantee == GUARANTEE_TYPE_NEGATIVE)
+        {
+            recent->tm_sec = 59;
+        }
+        else
+        {
+            recent->tm_sec = tm_start.tm_sec;
+        }
     }
 }
 
@@ -228,7 +400,9 @@ bool tm_day_is_valid(struct tm *time, int delta)
     }
 }
 
-bool tm_get_next_time(struct tm *next, const struct tm *start, unsigned int time_flags)
+bool tm_get_next_time(struct tm *next,
+                      const struct tm *start,
+                      unsigned int time_flags)
 {
     *next = *start;
     do

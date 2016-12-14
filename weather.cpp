@@ -671,27 +671,6 @@ int execute_weather_forcast(weather_forecast_t *forecast,
     parse_weather_object(&cur_weather, root);
     json_decref(root);
 
-    text = http_request(forecast->cur_url.c_str());
-    if(text != NULL)
-    {
-        root = json_loads(text, 0, &error);
-        free((void *)text);
-    }
-    else
-    {
-        return -1;
-    }
-
-    if(root == NULL)
-    {
-        fprintf(stderr, "error: on line %d: %s\n", error.line,
-                error.text);
-        return -1;
-    }
-
-    parse_weather_object(&cur_weather, root);
-    json_decref(root);
-
     text = http_request(forecast->url.c_str());
     if(text != NULL)
     {
@@ -728,7 +707,7 @@ int execute_weather_forcast(weather_forecast_t *forecast,
         template_replace(subject, dict);
         template_replace(content, dict);
         log_printf(LOG_LEVEL_INFO,
-                   "[Notify] subject: %s.",
+                   "[Notify] subject: %s.\n",
                    subject.c_str());
         notify(subject.c_str(),
                content.c_str());

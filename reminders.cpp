@@ -251,7 +251,7 @@ void execute_reminder(reminder_t *reminder, time_t when)
     template_replace(subject, dict);
     template_replace(content, dict);
     log_printf(LOG_LEVEL_INFO,
-           "[Notify] subject: %s.",
+           "[Notify] subject: %s.\n",
            subject.c_str());
     notify(subject.c_str(), content.c_str());
 }
@@ -348,6 +348,6 @@ void create_reminders_config_file(const char *filename)
         "test line 2\n"
         "test line 3\n";
     g_reminder_list.push_back(reminder);
-    save_reminders_to_file("reminders.xml");
+    save_reminders_to_file(filename);
 }
 

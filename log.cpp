@@ -22,7 +22,7 @@ namespace keywords = boost::log::keywords;
 
 src::severity_logger<logging::trivial::severity_level> g_logger;
 
-void init_log()
+void init_boost_log()
 {
 #define LOG_FORMAT_STRING "[%TimeStamp%]: %Message%"
 
@@ -51,6 +51,21 @@ void init_log()
     logging::add_common_attributes();
 }
 
+logging::trivial::severity_level map_log_level(FILE *fp)
+{
+    logging::trivial::severity_level r;
+    if(stdout == fp)
+    {
+        r = logging::trivial::info;
+    }
+    else
+    {
+        r = logging::trivial::error;
+    }
+    return r;
+}
+
+#ifdef USE_BOOST_LOG
 logging::trivial::severity_level map_log_level(int level)
 {
     logging::trivial::severity_level r;
@@ -80,8 +95,13 @@ logging::trivial::severity_level map_log_level(int level)
     }
     return r;
 }
+#endif // HAVE_FILE_LOG
 
-int log_printf(int level, const char *fmt, ...)
+#ifdef USE_BOOST_LOG
+int boost_log_printf(int level, const char *fmt, ...)
+#else
+int boost_log_printf(FILE *level, const char *fmt, ...)
+#endif
 {
     int cnt;
     char buf[1024];
@@ -90,7 +110,19 @@ int log_printf(int level, const char *fmt, ...)
     va_start(argptr, fmt);
     cnt = vsprintf(buf, fmt, argptr);
     va_end(argptr);
+    for(int off = cnt > 0 ? cnt - 1 : -1;
+        off > 0 && off < (int)sizeof(buf);
+        off--)
+    {
+        if(buf[off] == '\r' || buf[off] == '\n')
+        {
+            buf[off] = '\0';
+        }
+        else
+        {
+            break;
+        }
+    }
     BOOST_LOG_SEV(g_logger, map_log_level(level)) << buf;
     return cnt;
 }
-

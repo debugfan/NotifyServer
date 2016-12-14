@@ -620,9 +620,10 @@ double atof_n(const char *s, size_t n)
     return atof(buf);
 }
 
-void get_stock_context(condiction_context_t *ctx,
+bool get_stock_context(condiction_context_t *ctx,
                    const char *url)
 {
+    bool r = false;
     memset(ctx, 0, sizeof(condiction_context_t));
     char *text;
     const char *p;
@@ -634,6 +635,7 @@ void get_stock_context(condiction_context_t *ctx,
         p = strchr(text, '=');
         if(p == NULL)
         {
+            r = false;
             break;
         }
         p += strlen("=");
@@ -641,6 +643,7 @@ void get_stock_context(condiction_context_t *ctx,
         p = match_next(p, "\"");
         if(p == NULL)
         {
+            r = false;
             break;
         }
         p += 1;
@@ -648,6 +651,7 @@ void get_stock_context(condiction_context_t *ctx,
         p = strchr(p, ',');
         if(p == NULL)
         {
+            r = false;
             break;
         }
         p += 1;
@@ -672,6 +676,8 @@ void get_stock_context(condiction_context_t *ctx,
         {
             ctx->current = atof_n(p, end - p);
         }
+
+        r = true;
     }
     while(false);
 
@@ -679,14 +685,19 @@ void get_stock_context(condiction_context_t *ctx,
     {
         free(text);
     }
+
+    return r;
 }
 
-void execute_check_stock(stock_outline_t *stock,
+bool execute_check_stock(stock_outline_t *stock,
                                      time_t last_check,
                                      time_t current_time)
 {
     condiction_context_t ctx;
-    get_stock_context(&ctx, stock->url.c_str());
+    if(!get_stock_context(&ctx, stock->url.c_str()))
+    {
+        return false;
+    }
     std::list<stock_warning_t>::iterator iter;
     for(iter = stock->warning_list.begin();
             iter != stock->warning_list.end();
@@ -713,6 +724,8 @@ void execute_check_stock(stock_outline_t *stock,
             iter->active_state = WARNING_NOT_ACTIVE;
         }
     }
+
+    return true;
 }
 
 time_t process_stock_item(stock_outline_t *stock,
@@ -750,11 +763,18 @@ time_t process_stock_item(stock_outline_t *stock,
     {
         if(next <= current_time)
         {
-            execute_check_stock(stock, start, current_time);
-            stock->last = current_time;
+            if(execute_check_stock(stock, start, current_time))
+            {
+                stock->last = current_time;
 
-            return wild_time_list_get_next_time(stock->check_time_list,
-                                        current_time);
+                return wild_time_list_get_next_time(stock->check_time_list,
+                                            current_time);
+            }
+            else
+            {
+                // retry
+                return current_time + 5;
+            }
         }
         else
         {

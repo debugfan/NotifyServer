@@ -22,6 +22,7 @@ using namespace std;
 
 typedef struct _options_t {
     bool daemon;
+    const char *config_dir;
 } options_t;
 
 void print_version(const char *program_name)
@@ -36,6 +37,7 @@ void print_help(const char *program_name)
 {
     print_version(program_name);
     fprintf(stdout, " -d, --daemon      run as daemon\n");
+    fprintf(stdout, " -c, --config      config file directory\n");
     fprintf(stdout, " -v, --version     print version infomation\n");
     fprintf(stdout, " -h, --help        print this help\n");
 }
@@ -49,6 +51,7 @@ int parse_options(int argc, char **argv, options_t *opts)
         static struct option long_options[] =
         {
             { "daemon", no_argument, 0, 'd' },
+            { "config", no_argument, 0, 'c' },
             { "help", no_argument, 0, 'h' },
             { "version", no_argument, 0, 'v' },
             { 0, 0, 0, 0 }
@@ -56,7 +59,7 @@ int parse_options(int argc, char **argv, options_t *opts)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "dhv",
+        c = getopt_long(argc, argv, "dhvc:",
             long_options, &option_index);
 
         /* Detect the end of the options. */
@@ -77,6 +80,9 @@ int parse_options(int argc, char **argv, options_t *opts)
             break;
         case 'd':
             opts->daemon = true;
+            break;
+        case 'c':
+            opts->config_dir = strdup(optarg);
             break;
         case 'h':
             print_help(PROGRAM_NAME);
@@ -130,7 +136,8 @@ int win_daemon(char *command_line)
         &pi )           // Pointer to PROCESS_INFORMATION structure
     )
     {
-        printf( "CreateProcess failed (%d).\n", (int)GetLastError() );
+        log_printf(LOG_LEVEL_ERROR,
+                   "CreateProcess failed (%d).\n", (int)GetLastError() );
         return -1;
     }
 
@@ -155,11 +162,14 @@ task_item_t g_task_list[] = {
 
 int main(int argc, char *argv[])
 {
+    char config_dir[MAX_PATH];
+    char config_file[MAX_PATH];
     options_t opts;
 	memset(&opts, 0, sizeof(opts));
 	parse_options(argc, argv, &opts);
 	init_log();
-	set_work_state_file(".\\NotifyServer.ini", "work_state");
+    set_work_state_file(".\\NotifyServer.ini",
+        "work_state");
 	if(opts.daemon != false)
     {
         char cl[MAX_PATH];
@@ -186,43 +196,75 @@ int main(int argc, char *argv[])
         }
     }
 
-    if(file_exists("accounts.xml")) {
-        load_accounts_from_file("accounts.xml");
-    }
-    else {
-        create_accounts_config_file("accounts.xml");
-    }
-
-    if(file_exists("reminders.xml")) {
-        load_reminders_from_file("reminders.xml");
+    if(opts.config_dir != NULL)
+    {
+        strcpy(config_dir, opts.config_dir);
     }
     else
     {
-        create_reminders_config_file("reminders.xml");
+        get_default_config_directory(config_dir, sizeof(config_dir));
     }
 
-    if(file_exists("weather.xml")) {
-        load_weather_config_from_file("weather.xml");
+    create_dir_safely(config_dir);
+
+    get_full_path(config_file,
+                  config_dir,
+                  "accounts.xml");
+    if(file_exists(config_file))
+    {
+        load_accounts_from_file(config_file);
     }
     else
     {
-        create_weather_config_file("weather.xml");
+        create_accounts_config_file(config_file);
     }
 
-    if(file_exists("feed.xml")) {
-        load_feed_config_from_file("feed.xml");
+    get_full_path(config_file,
+              config_dir,
+              "reminders.xml");
+    if(file_exists(config_file))
+    {
+        load_reminders_from_file(config_file);
     }
     else
     {
-        create_feed_config_file("feed.xml");
+        create_reminders_config_file(config_file);
     }
 
-    if(file_exists("stock.xml")) {
-        load_stock_config_from_file("stock.xml");
+    get_full_path(config_file,
+              config_dir,
+              "weather.xml");
+    if(file_exists(config_file))
+    {
+        load_weather_config_from_file(config_file);
     }
     else
     {
-        create_stock_config_file("stock.xml");
+        create_weather_config_file(config_file);
+    }
+
+    get_full_path(config_file,
+              config_dir,
+              "feed.xml");
+    if(file_exists(config_file))
+    {
+        load_feed_config_from_file(config_file);
+    }
+    else
+    {
+        create_feed_config_file(config_file);
+    }
+
+    get_full_path(config_file,
+        config_dir,
+        "stock.xml");
+    if(file_exists(config_file))
+    {
+        load_stock_config_from_file(config_file);
+    }
+    else
+    {
+        create_stock_config_file(config_file);
     }
 
     time_t last = time(NULL);
@@ -260,7 +302,9 @@ int main(int argc, char *argv[])
 
         if(min_delay > 0)
         {
-            printf("Sleep for (seconds): %d\n", min_delay);
+            log_printf(LOG_LEVEL_INFO,
+                       "Sleep for (seconds): %d\n",
+                       min_delay);
             Sleep(min_delay*1000);
         }
     }
