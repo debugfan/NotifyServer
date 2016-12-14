@@ -14,12 +14,22 @@
 
 #define MAX_TIME    0x7FFFFFFF
 
+typedef struct
+{
+    int start;
+    int end;
+} time_range_t;
+
 typedef struct {
-    struct tm time;
-    unsigned int flags;
+    time_range_t year;
+    time_range_t mon;
+    time_range_t mday;
+    time_range_t hour;
+    time_range_t min;
+    time_range_t sec;
 } wild_time_t;
 
-void set_wild_time(wild_time_t *time, time_t value, unsigned int flags);
+void wild_time_set_fixed_time(wild_time_t *time, time_t value);
 void parse_wild_time_string(wild_time_t *time, const char *s);
 time_t wild_time_get_recent_time(wild_time_t *wild_time, time_t current);
 time_t wild_time_get_next_time(const wild_time_t *time, time_t start);

@@ -5,6 +5,10 @@
 #include <string>
 #include <map>
 
+double atoi_n(const char *s, size_t n);
+
+double atof_n(const char *s, size_t n);
+
 char *skip_blank(const char *s);
 
 void replace_all(std::string& str,

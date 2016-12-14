@@ -19,7 +19,6 @@
 #include <list>
 #include <string>
 #include <map>
-#include "minmax.h"
 
 using namespace std;
 
@@ -467,7 +466,7 @@ void create_stock_config_file(const char *filename)
     stock_outline_t stock;
     time_t next = time(NULL) + 30;
     wild_time_t wild_time;
-    set_wild_time(&wild_time, next, 0);
+    wild_time_set_fixed_time(&wild_time, next);
     stock.check_time_list.push_back(wild_time);
     stock_warning_t warning;
     warning.expression = "{{INCREASE_RATIO}} >= 2";
@@ -610,14 +609,6 @@ const char *match_next(const char *s, const char *pattern)
     {
         return NULL;
     }
-}
-
-double atof_n(const char *s, size_t n)
-{
-    char buf[16];
-    memset(buf, 0, sizeof(buf));
-    memcpy(buf, s, MIN(n, sizeof(buf) - 1));
-    return atof(buf);
 }
 
 bool get_stock_context(condiction_context_t *ctx,

@@ -1,4 +1,8 @@
 #include "string_utils.h"
+#include "minmax.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 void replace_all(std::string& str,
                  const std::string& from,
@@ -45,4 +49,22 @@ char *skip_blank(const char *s)
     }
     return (char *)s;
 }
+
+double atoi_n(const char *s, size_t n)
+{
+    char buf[16];
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, s, MIN(n, sizeof(buf) - 1));
+    return atoi(buf);
+}
+
+double atof_n(const char *s, size_t n)
+{
+    char buf[16];
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, s, MIN(n, sizeof(buf) - 1));
+    return atof(buf);
+}
+
+
 

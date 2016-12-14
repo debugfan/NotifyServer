@@ -296,7 +296,7 @@ void create_feed_config_file(const char *filename)
     feed_outline_t feed;
     time_t next = time(NULL) + 30;
     wild_time_t wild_time;
-    set_wild_time(&wild_time, next, 0);
+    wild_time_set_fixed_time(&wild_time, next);
     feed.check_time_list.push_back(wild_time);
     feed.enable = 1;
     feed.subject = "{{ENTRY_TITLE}}";

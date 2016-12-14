@@ -341,7 +341,7 @@ void create_reminders_config_file(const char *filename)
     time_t next = time(NULL) + 30;
     reminder_t reminder;
     wild_time_t wild_time;
-    set_wild_time(&wild_time, next, 0);
+    wild_time_set_fixed_time(&wild_time, next);
     reminder.time_list.push_back(wild_time);
     reminder.subject = "test";
     reminder.content = "test line 1\n"
