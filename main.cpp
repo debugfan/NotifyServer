@@ -204,6 +204,9 @@ int main(int argc, char *argv[])
     {
         get_default_config_directory(config_dir, sizeof(config_dir));
     }
+    log_printf(LOG_LEVEL_INFO,
+               "Config directory: %s.\n",
+               config_dir);
 
     create_dir_safely(config_dir);
 

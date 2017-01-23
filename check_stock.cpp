@@ -24,14 +24,31 @@ using namespace std;
 
 typedef struct
 {
+    int id;
+    const char *name;
+} data_field_symbol_t;
+
+#define DATA_TYPE_FIELD_CURRENT                     0
+#define DATA_TYPE_FIELD_INCREASE                    1
+#define DATA_TYPE_FIELD_INCREASE_RATIO              2
+#define DATA_TYPE_FIELD_INCREASE_RATIO_FROM_NADIR   3
+#define DATA_TYPE_FIELD_INCREASE_RATIO_FROM_ZENITH  4
+
+data_field_symbol_t symbol_table[] = {
+    {DATA_TYPE_FIELD_CURRENT, "{{CURRENT}}"},
+    {DATA_TYPE_FIELD_INCREASE, "{{INCREASE}}"},
+    {DATA_TYPE_FIELD_INCREASE_RATIO, "{{INCREASE_RATIO}}"},
+    {DATA_TYPE_FIELD_INCREASE_RATIO_FROM_NADIR, "{{INCREASE_RATIO_FROM_NADIR}}"},
+    {DATA_TYPE_FIELD_INCREASE_RATIO_FROM_ZENITH, "{{INCREASE_RATIO_FROM_ZENITH}}"},
+};
+
+typedef struct
+{
 // type
 #define DATA_TYPE_INT       0
 #define DATA_TYPE_DOUBLE    1
 #define DATA_TYPE_FIELD     2
 // field type
-#define DATA_TYPE_FIELD_CURRENT         0
-#define DATA_TYPE_FIELD_INCREASE        1
-#define DATA_TYPE_FIELD_INCREASE_RATIO  2
     int type;
     union {
         int i_data;
@@ -55,7 +72,13 @@ typedef struct {
     double open;
     double last_close;
     double current;
-} condiction_context_t;
+} basic_context_t;
+
+typedef struct {
+    basic_context_t basic;
+    double nadir;
+    double zenith;
+} condition_context_t;
 
 typedef struct
 {
@@ -79,6 +102,7 @@ typedef struct
 } stock_outline_t;
 
 list<stock_outline_t> g_stock_outline_list;
+map<string, condition_context_t> g_stock_context_map;
 
 void parse_basic_condition(basic_condition_t *condi, const char *content)
 {
@@ -92,31 +116,22 @@ void parse_basic_condition(basic_condition_t *condi, const char *content)
         return;
     }
 
-    if(0 == strncmp(p,
-                    "{{CURRENT}}",
-                    strlen("{{CURRENT}}")))
+    unsigned int idx = 0;
+    for(idx = 0; idx < sizeof(symbol_table)/sizeof(data_field_symbol_t); idx++)
     {
-        condi->data1.type = DATA_TYPE_FIELD;
-        condi->data1.u.i_data = DATA_TYPE_FIELD_CURRENT;
-        p += strlen("{{CURRENT}}");
+        const char *name = symbol_table[idx].name;
+        if(0 == strncmp(p,
+                        name,
+                        strlen(name)))
+        {
+            condi->data1.type = DATA_TYPE_FIELD;
+            condi->data1.u.i_data = symbol_table[idx].id;
+            p += strlen(name);
+            break;
+        }
     }
-    else if(0 == strncmp(p,
-                         "{{INCREASE}}",
-                         strlen("{{INCREASE}}")))
-    {
-        condi->data1.type = DATA_TYPE_FIELD;
-        condi->data1.u.i_data = DATA_TYPE_FIELD_INCREASE;
-        p += strlen("{{INCREASE}}");
-    }
-    else if(0 == strncmp(p,
-                         "{{INCREASE_RATIO}}",
-                         strlen("{{INCREASE_RATIO}}")))
-    {
-        condi->data1.type = DATA_TYPE_FIELD;
-        condi->data1.u.i_data = DATA_TYPE_FIELD_INCREASE_RATIO;
-        p += strlen("{{INCREASE_RATIO}}");
-    }
-    else
+
+    if(idx >= sizeof(symbol_table)/sizeof(data_field_symbol_t))
     {
         return;
     }
@@ -469,9 +484,9 @@ void create_stock_config_file(const char *filename)
     wild_time_set_fixed_time(&wild_time, next);
     stock.check_time_list.push_back(wild_time);
     stock_warning_t warning;
-    warning.expression = "{{INCREASE_RATIO}} >= 2";
+    warning.expression = "{{INCREASE_RATIO}} >= 0.01";
     stock.warning_list.push_back(warning);
-    warning.expression = "{{INCREASE_RATIO}} <= -2";
+    warning.expression = "{{INCREASE_RATIO}} <= -0.01";
     stock.warning_list.push_back(warning);
     stock.subject = "Stock Warning";
     stock.content = "Current price: {{CURRENT_PRICE}}";
@@ -482,7 +497,7 @@ void create_stock_config_file(const char *filename)
 }
 
 double get_data_value(const data_item_t *item,
-                           const condiction_context_t *ctx)
+                           const condition_context_t *ctx)
 {
     double r;
     if(item->type == DATA_TYPE_INT)
@@ -495,33 +510,35 @@ double get_data_value(const data_item_t *item,
     }
     else if(item->type == DATA_TYPE_FIELD)
     {
-        if(item->type == DATA_TYPE_FIELD_CURRENT)
+        if(item->u.i_data == DATA_TYPE_FIELD_CURRENT)
         {
-            r = ctx->current;
+            r = ctx->basic.current;
         }
-        else if(item->type == DATA_TYPE_FIELD_INCREASE)
+        else if(item->u.i_data == DATA_TYPE_FIELD_INCREASE)
         {
-            r = ctx->current - ctx->last_close;
+            r = ctx->basic.current - ctx->basic.last_close;
         }
-        else if(item->type == DATA_TYPE_FIELD_INCREASE_RATIO)
+        else if(item->u.i_data == DATA_TYPE_FIELD_INCREASE_RATIO)
         {
             double divider = 1;
-            if(ctx->last_close != 0)
+            if(ctx->basic.last_close != 0)
             {
-                divider = ctx->last_close;
+                divider = ctx->basic.last_close;
             }
             else
             {
-                divider = ctx->open;
+                divider = ctx->basic.open;
             }
-            if(divider == 0)
-            {
-                r = 0x7fffffff;
-            }
-            else
-            {
-                r = (ctx->current * 100 - ctx->last_close * 100)/divider;
-            }
+
+            r = (ctx->basic.current - divider)/divider;
+        }
+        else if(item->u.i_data == DATA_TYPE_FIELD_INCREASE_RATIO_FROM_NADIR)
+        {
+            r = (ctx->basic.current - ctx->nadir)/ctx->nadir;
+        }
+        else if(item->u.i_data == DATA_TYPE_FIELD_INCREASE_RATIO_FROM_ZENITH)
+        {
+            r = (ctx->basic.current - ctx->zenith)/ctx->zenith;
         }
         else
         {
@@ -537,7 +554,7 @@ double get_data_value(const data_item_t *item,
 }
 
 bool check_basic_condition(const basic_condition_t *condi,
-                           const condiction_context_t *ctx)
+                           const condition_context_t *ctx)
 {
     bool r;
     if(condi->op_type == OPERATE_TYPE_NONE)
@@ -567,7 +584,7 @@ bool check_basic_condition(const basic_condition_t *condi,
     return r;
 }
 
-bool check_stock_warning(stock_warning_t *warning, const condiction_context_t *ctx)
+bool check_stock_warning(stock_warning_t *warning, const condition_context_t *ctx)
 {
     if(warning->active_state != WARNING_ACTIVE)
     {
@@ -611,11 +628,11 @@ const char *match_next(const char *s, const char *pattern)
     }
 }
 
-bool get_stock_context(condiction_context_t *ctx,
+bool get_stock_basic_context(basic_context_t *ctx,
                    const char *url)
 {
     bool r = false;
-    memset(ctx, 0, sizeof(condiction_context_t));
+    memset(ctx, 0, sizeof(basic_context_t));
     char *text;
     const char *p;
     const char *end;
@@ -684,11 +701,51 @@ bool execute_check_stock(stock_outline_t *stock,
                                      time_t last_check,
                                      time_t current_time)
 {
-    condiction_context_t ctx;
-    if(!get_stock_context(&ctx, stock->url.c_str()))
+    condition_context_t ctx;
+    basic_context_t basic_ctx;
+    string url = stock->url;
+    if(!get_stock_basic_context(&basic_ctx, url.c_str()))
     {
         return false;
     }
+    if(basic_ctx.open == 0
+       || basic_ctx.current == 0)
+    {
+        return false;
+    }
+    map<string, condition_context_t>::iterator condi_iter;
+    condi_iter = g_stock_context_map.find(url);
+    if(condi_iter != g_stock_context_map.end())
+    {
+        if(condi_iter->second.basic.open != basic_ctx.open
+           || condi_iter->second.basic.last_close != basic_ctx.last_close)
+        {
+            condi_iter->second.basic = basic_ctx;
+            condi_iter->second.nadir = basic_ctx.current;
+            condi_iter->second.zenith = basic_ctx.current;
+        }
+        else
+        {
+            if(condi_iter->second.nadir > basic_ctx.current)
+            {
+                condi_iter->second.nadir = basic_ctx.current;
+            }
+
+            if(condi_iter->second.zenith < basic_ctx.current)
+            {
+                condi_iter->second.zenith = basic_ctx.current;
+            }
+        }
+        ctx = condi_iter->second;
+    }
+    else
+    {
+        ctx.basic = basic_ctx;
+        ctx.nadir = basic_ctx.current;
+        ctx.zenith = basic_ctx.current;
+        g_stock_context_map[url] = ctx;
+    }
+
     std::list<stock_warning_t>::iterator iter;
     for(iter = stock->warning_list.begin();
             iter != stock->warning_list.end();
@@ -700,11 +757,26 @@ bool execute_check_stock(stock_outline_t *stock,
             string subject = stock->subject;
             string content = stock->content;
             dict_t dict;
-            sprintf(buf, "%.3f", ctx.last_close);
+            sprintf(buf, "%.3f", ctx.basic.last_close);
             template_dict_set_pair(dict,
                                     "LAST_CLOSE_PRICE",
                                     buf);
-            sprintf(buf, "%.3f", ctx.current);
+            sprintf(buf, "%.3f", ctx.basic.open);
+            template_replace(subject, dict);
+                        template_dict_set_pair(dict,
+                                    "OPEN_PRICE",
+                                    buf);
+            sprintf(buf, "%.3f", ctx.zenith);
+            template_replace(subject, dict);
+                        template_dict_set_pair(dict,
+                                    "HIGH_PRICE",
+                                    buf);
+            sprintf(buf, "%.3f", ctx.nadir);
+            template_replace(subject, dict);
+                        template_dict_set_pair(dict,
+                                    "LOW_PRICE",
+                                    buf);
+            sprintf(buf, "%.3f", ctx.basic.current);
             template_dict_set_pair(dict,
                                     "CURRENT_PRICE",
                                     buf);

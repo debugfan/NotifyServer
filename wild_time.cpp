@@ -3,10 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "string_utils.h"
+#include "minmax.h"
 
 #define GUARANTEE_TYPE_NONE         0
 #define GUARANTEE_TYPE_POSITIVE     1
 #define GUARANTEE_TYPE_NEGATIVE     -1
+
+#define MAX_TIME_YEAR   (2038 - 1900)
 
 void wild_time_set_fixed_time(wild_time_t *time, time_t value)
 {
@@ -163,7 +166,7 @@ void parse_wild_time_string(wild_time_t *time, const char *s)
     e = strchr(p, '-');
     n = (e != NULL ? e - p : -1);
     parse_origin_time_range(&range, p, n);
-    move_time_range(&range, -1900, 0, 2038-1900);
+    move_time_range(&range, -1900, 0, MAX_TIME_YEAR);
     time->year = range;
     if(e == NULL)
     {
@@ -736,7 +739,7 @@ bool wild_time_get_next_tm_time(struct tm *next,
             next->tm_year++;
             if(!tm_day_is_valid(next, 0))
             {
-                if(next->tm_mon < wild_time->year.end)
+                if(next->tm_year < wild_time->year.end)
                 {
                     next->tm_year++;
                     break;
@@ -806,13 +809,16 @@ void wild_time_get_recent_tm_time(struct tm *tm_recent,
         }
     }
 
+    int max_mday = get_max_mday(tm_recent->tm_year,
+                                tm_recent->tm_mon);
     if(guarantee == GUARANTEE_TYPE_POSITIVE)
     {
         tm_recent->tm_mday = wild_time->mday.start;
     }
     else if(guarantee == GUARANTEE_TYPE_NEGATIVE)
     {
-        tm_recent->tm_mday = wild_time->mday.end;
+        tm_recent->tm_mday = MIN(max_mday,
+                                 wild_time->mday.end);
     }
     else
     {
@@ -823,12 +829,21 @@ void wild_time_get_recent_tm_time(struct tm *tm_recent,
         }
         else if(tm_start.tm_mday > wild_time->mday.end)
         {
-            tm_recent->tm_mday = wild_time->mday.end;
+            tm_recent->tm_mday = MIN(max_mday,
+                                     wild_time->mday.end);
             guarantee = GUARANTEE_TYPE_NEGATIVE;
         }
         else
         {
-            tm_recent->tm_mday = tm_start.tm_mday;
+            if(tm_start.tm_mday > max_mday)
+            {
+                tm_recent->tm_mday = max_mday;
+                guarantee = GUARANTEE_TYPE_NEGATIVE;
+            }
+            else
+            {
+                tm_recent->tm_mday = tm_start.tm_mday;
+            }
         }
     }
 
@@ -991,7 +1006,7 @@ void format_wild_time(const wild_time_t *wild_time, char *buf)
     if(wild_time->year.end > wild_time->year.start)
     {
         if(wild_time->year.start <= 0
-           && wild_time->year.end >= (2038 - 1900))
+           && wild_time->year.end >= MAX_TIME_YEAR)
         {
             strcpy(tmp, "*");
         }
@@ -1049,7 +1064,6 @@ void format_wild_time(const wild_time_t *wild_time, char *buf)
     strcat(buf, tmp);
 
     strcat(buf, " ");
-
     if(wild_time->hour.end > wild_time->hour.start)
     {
         if(wild_time->hour.start <= 0

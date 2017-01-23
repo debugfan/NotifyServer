@@ -5,6 +5,7 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 #include "log.h"
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
@@ -14,11 +15,13 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
+#include <boost/log/support/date_time.hpp>
 
 namespace logging = boost::log;
 namespace src = boost::log::sources;
 namespace sinks = boost::log::sinks;
 namespace keywords = boost::log::keywords;
+namespace expr = boost::log::expressions;
 
 src::severity_logger<logging::trivial::severity_level> g_logger;
 
@@ -27,7 +30,18 @@ void init_boost_log()
 #define LOG_FORMAT_STRING "[%TimeStamp%]: %Message%"
 
     logging::add_console_log(std::cout,
-                             keywords::format = LOG_FORMAT_STRING);
+#if defined(USE_SIMPLE_LOG_FORMAT)
+                            keywords::format = LOG_FORMAT_STRING
+#else
+                            keywords::format =
+                            (
+                                expr::stream
+                                    << expr::format_date_time<boost::posix_time::ptime>("TimeStamp",
+                                                                                        "[%Y-%m-%d %H:%M:%S]")
+                                    << ": " << expr::smessage
+                            )
+#endif // USE_SIMPLE_TIME_FORMAT
+                             );
     logging::add_file_log
     (
         /*< file name pattern >*/
@@ -37,7 +51,17 @@ void init_boost_log()
         /*< ...or at midnight >*/
         keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0),
         /*< log record format >*/
+#if defined(USE_SIMPLE_LOG_FORMAT)
         keywords::format = LOG_FORMAT_STRING,
+#else
+        keywords::format =
+        (
+            expr::stream
+                << expr::format_date_time<boost::posix_time::ptime>("TimeStamp",
+                                                                    "[%Y-%m-%d %H:%M:%S]")
+                << ": " << expr::smessage
+        ),
+#endif // defined
         // other args
         keywords::open_mode = (std::ios::out | std::ios::app),
         keywords::auto_flush = true

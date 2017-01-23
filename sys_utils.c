@@ -84,7 +84,6 @@ int create_dir_safely(const char *dir)
 
 void get_default_config_directory(char *buf, int len)
 {
-    strcpy(buf, getenv("HOMEDRIVE"));
-    strcat(buf, getenv("HOMEPATH"));
+    strcpy(buf, getenv("USERPROFILE"));
     strcat(buf, "\\.NofityServer");
 }
